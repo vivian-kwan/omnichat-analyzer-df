@@ -5,50 +5,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Skill Editor — Omnichat Analyzer</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+    :root {
+      --surface2: #fafafa; --border: #e0e0e0; --text: #111111; --text2: #555555; --text3: #888888;
+      --brand: #FF0000; --brand-hover: #cc0000;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #222; }
-    header { background: #1a1a2e; color: #fff; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
-    header h1 { font-size: 18px; font-weight: 600; }
-    .badge { background: #e74c3c; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--surface2); color: var(--text); }
+    header { background: #1c1b18; color: #f7f6f2; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 16px; font-weight: 700; }
+    .badge {
+      background: var(--brand); color: #fff; font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .05em; padding: 3px 9px; border-radius: 10px; font-family: 'IBM Plex Mono', monospace;
+    }
     .container { max-width: 900px; margin: 32px auto; padding: 0 16px; }
-    .auth-box { background: #fff; border-radius: 10px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 24px; }
-    .auth-box h2 { font-size: 15px; margin-bottom: 14px; color: #555; }
+    .auth-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+    .auth-box h2 { font-size: 13px; margin-bottom: 14px; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
     .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     input[type=text], input[type=password] {
-      flex: 1; min-width: 200px; padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;
+      flex: 1; min-width: 200px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit;
     }
+    input[type=text]:focus, input[type=password]:focus { outline: 2px solid var(--brand); outline-offset: -1px; border-color: transparent; }
     button {
-      padding: 9px 18px; border: none; border-radius: 6px; cursor: pointer;
-      font-size: 14px; font-weight: 500; transition: opacity .15s;
+      padding: 9px 18px; border: none; border-radius: 8px; cursor: pointer;
+      font-size: 13px; font-weight: 600; transition: background .15s;
     }
-    button:hover { opacity: .85; }
-    .btn-primary { background: #1a1a2e; color: #fff; }
-    .btn-save { background: #27ae60; color: #fff; }
-    .btn-cancel { background: #eee; color: #444; }
-    .skill-list { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 24px; }
-    .skill-list h2 { font-size: 15px; color: #555; margin-bottom: 14px; }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-hover); }
+    .btn-save { background: var(--brand); color: #fff; }
+    .btn-save:hover { background: var(--brand-hover); }
+    .btn-cancel { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+    .btn-cancel:hover { background: #fff5f5; border-color: var(--brand); color: var(--brand); }
+    .skill-list { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+    .skill-list h2 { font-size: 13px; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; margin-bottom: 14px; }
     .skill-card {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 11px 14px; border: 1px solid #e8e8e8; border-radius: 7px; margin-bottom: 8px;
-      background: #fafafa; cursor: pointer; transition: background .15s;
+      padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;
+      background: var(--surface2); cursor: pointer; transition: background .15s;
     }
-    .skill-card:hover { background: #f0f4ff; }
-    .skill-card.active { background: #eaf4ff; border-color: #4a90e2; }
-    .skill-name { font-weight: 500; font-size: 14px; }
-    .skill-hint { font-size: 12px; color: #999; }
-    .editor-box { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.08); display: none; }
+    .skill-card:hover { background: #fff5f5; }
+    .skill-card.active { background: #fff5f5; border-color: var(--brand); }
+    .skill-name { font-weight: 600; font-size: 13px; }
+    .skill-hint { font-size: 11px; color: var(--text3); font-family: 'IBM Plex Mono', monospace; }
+    .editor-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; display: none; }
     .editor-box.visible { display: block; }
-    .editor-box h2 { font-size: 15px; color: #555; margin-bottom: 12px; }
+    .editor-box h2 { font-size: 13px; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; margin-bottom: 12px; }
     textarea {
-      width: 100%; height: 420px; padding: 12px; border: 1px solid #ddd;
-      border-radius: 7px; font-size: 13px; font-family: 'Menlo', 'Consolas', monospace;
-      line-height: 1.55; resize: vertical;
+      width: 100%; height: 420px; padding: 14px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 12.5px; font-family: 'IBM Plex Mono', 'Menlo', 'Consolas', monospace;
+      line-height: 1.6; resize: vertical; color: var(--text);
     }
+    textarea:focus { outline: 2px solid var(--brand); outline-offset: -1px; }
     .editor-actions { margin-top: 12px; display: flex; gap: 10px; }
-    .status { font-size: 13px; margin-top: 10px; min-height: 20px; }
-    .status.ok { color: #27ae60; }
-    .status.err { color: #e74c3c; }
-    #authStatus { font-size: 13px; margin-top: 8px; min-height: 18px; }
+    .status { font-size: 12.5px; margin-top: 10px; min-height: 20px; font-family: 'IBM Plex Mono', monospace; }
+    .status.ok { color: #1e824c; }
+    .status.err { color: #b13a30; }
+    #authStatus { font-size: 12.5px; margin-top: 8px; min-height: 18px; font-family: 'IBM Plex Mono', monospace; }
   </style>
 </head>
 <body>

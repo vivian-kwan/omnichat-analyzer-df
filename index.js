@@ -6,6 +6,7 @@ const fs = require('fs');
 
 const analyzeRouter = require('./routes/analyze');
 const skillsRouter = require('./routes/skills');
+const { authMiddleware } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,6 +16,13 @@ app.use(express.json({ limit: '10mb' }));
 
 // Static files (admin UI, updates.xml, .crx)
 app.use(express.static(path.join(__dirname, 'public')));
+
+// GET /api/me — any authenticated user (not senior-only) looks up their own name/role,
+// so the extension can gate UI locally (identity readout, senior-only settings fields)
+// without granting any new server permissions.
+app.get('/api/me', authMiddleware, (req, res) => {
+  res.json({ success: true, data: { name: req.user.name, role: req.user.role } });
+});
 
 // API routes
 app.use('/api', analyzeRouter);

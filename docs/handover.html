@@ -1,0 +1,295 @@
+<title>Omnichat Analyzer V2 — Redesign Handover</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #faf8f6;
+    --surface2: #f3f0eb;
+    --border: #e5e1da;
+    --text: #17140f;
+    --text2: #59544c;
+    --text3: #8a8478;
+    --accent: #FF0000;
+    --accent-hover: #cc0000;
+    --accent-tint: #fff0ef;
+    --ok: #1e824c;
+    --ok-tint: #eafaf0;
+    --warn: #b13a30;
+    --warn-tint: #fff4f3;
+    --lbl-quotation: #FFC107;
+    --lbl-qstart: #F57C00;
+    --lbl-followup: #FF0000;
+    --code-bg: #17140f;
+    --code-text: #f2efe9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17140f;
+      --surface: #211d17;
+      --surface2: #2a251d;
+      --border: #3a342a;
+      --text: #f2efe9;
+      --text2: #b6afa2;
+      --text3: #857e70;
+      --accent: #ff4433;
+      --accent-hover: #ff6650;
+      --accent-tint: #2c1512;
+      --ok: #4ade80;
+      --ok-tint: #0f2a1c;
+      --warn: #ff8a75;
+      --warn-tint: #2c1512;
+      --code-bg: #0d0b08;
+      --code-text: #f2efe9;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17140f;
+    --surface: #211d17;
+    --surface2: #2a251d;
+    --border: #3a342a;
+    --text: #f2efe9;
+    --text2: #b6afa2;
+    --text3: #857e70;
+    --accent: #ff4433;
+    --accent-hover: #ff6650;
+    --accent-tint: #2c1512;
+    --ok: #4ade80;
+    --ok-tint: #0f2a1c;
+    --warn: #ff8a75;
+    --warn-tint: #2c1512;
+    --code-bg: #0d0b08;
+    --code-text: #f2efe9;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 15px; line-height: 1.6;
+  }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding: 56px 24px 96px; }
+
+  .kicker { font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); margin-bottom: 10px; }
+  h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.4px; margin: 0 0 10px; text-wrap: balance; }
+  .lead { font-size: 15.5px; color: var(--text2); max-width: 62ch; margin: 0 0 24px; }
+
+  .jumpnav { display: flex; gap: 10px; margin-bottom: 40px; }
+  .jumpnav a {
+    font-size: 13px; font-weight: 600; color: var(--text); text-decoration: none;
+    border: 1px solid var(--border); border-radius: 100px; padding: 7px 16px;
+    transition: border-color .15s, color .15s;
+  }
+  .jumpnav a:hover, .jumpnav a:focus-visible { border-color: var(--accent); color: var(--accent); }
+
+  .callout {
+    border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--accent-tint);
+    border-radius: 0 8px 8px 0; padding: 16px 20px; margin-bottom: 40px;
+  }
+  .callout .callout-title { font-weight: 700; font-size: 13.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .callout p { margin: 0 0 8px; font-size: 13.5px; color: var(--text2); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout ul { margin: 6px 0 0; padding-left: 20px; font-size: 13.5px; color: var(--text2); }
+  .callout li { margin-bottom: 4px; }
+
+  section { margin-bottom: 56px; scroll-margin-top: 24px; }
+  h2 { font-size: 21px; font-weight: 700; letter-spacing: -0.2px; margin: 0 0 6px; }
+  .section-sub { font-size: 13.5px; color: var(--text3); margin: 0 0 24px; }
+
+  .card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 28px; }
+  @media (max-width: 620px) { .card-grid { grid-template-columns: 1fr; } }
+  .fcard { border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 16px 18px; }
+  .fcard h3 { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
+  .fcard p { font-size: 13px; color: var(--text2); margin: 0; }
+
+  /* live demo strip */
+  .demo { border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 20px; margin-bottom: 28px; }
+  .demo-label { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--text3); margin-bottom: 14px; }
+  .demo-row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .demo-col { flex: 1; min-width: 220px; }
+  .demo-panel {
+    width: 100%; max-width: 260px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg);
+  }
+  .demo-panel-header {
+    padding: 8px 12px; background: var(--surface2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text2);
+  }
+  .demo-panel-header button { all: unset; cursor: pointer; color: var(--text3); font-size: 12px; padding: 2px 5px; border-radius: 3px; }
+  .demo-panel-header button:hover { background: var(--border); color: var(--text); }
+  .demo-panel-body { padding: 14px; font-size: 11px; color: var(--text2); }
+  .demo-panel.collapsed .demo-panel-body { display: none; }
+  .swatch-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .swatch { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text2); }
+  .swatch .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; }
+  th { text-align: left; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text3); }
+  td { padding: 8px 10px; border: 1px solid var(--border); vertical-align: top; color: var(--text2); }
+  td.file { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text); white-space: nowrap; }
+  .table-scroll { overflow-x: auto; margin-bottom: 28px; }
+
+  ol.steps { list-style: none; margin: 0 0 28px; padding: 0; counter-reset: step; }
+  ol.steps li {
+    counter-increment: step; position: relative; padding: 12px 0 12px 40px; border-bottom: 1px solid var(--border); font-size: 13.5px; color: var(--text2);
+  }
+  ol.steps li:last-child { border-bottom: none; }
+  ol.steps li::before {
+    content: counter(step); position: absolute; left: 0; top: 12px; width: 24px; height: 24px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text);
+  }
+  ol.steps strong { color: var(--text); }
+  ol.steps code, p code, td code, li code { font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: var(--surface2); color: var(--text); padding: 1px 5px; border-radius: 3px; }
+
+  .status-box { border: 1px solid var(--border); border-left: 3px solid var(--ok); background: var(--ok-tint); border-radius: 0 8px 8px 0; padding: 14px 18px; margin-bottom: 28px; font-size: 13.5px; color: var(--text2); }
+  .status-box strong { color: var(--text); }
+
+  .flag { border: 1px solid var(--border); border-left: 3px solid var(--warn); background: var(--warn-tint); border-radius: 0 8px 8px 0; padding: 14px 18px; margin-bottom: 12px; font-size: 13.5px; color: var(--text2); }
+  .flag strong { color: var(--text); }
+
+  footer { border-top: 1px solid var(--border); padding-top: 20px; font-size: 12px; color: var(--text3); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <div class="kicker">Omnichat Analyzer V2 · Handover note</div>
+  <h1>Panel redesign + fixes — what changed and how to ship it</h1>
+  <p class="lead">Covers what's different for the DF防護 CS team using the panel day to day, and what whoever deploys this needs to do to get it live. Prepared 2026-08-13.</p>
+
+  <div class="jumpnav">
+    <a href="#team">For the team →</a>
+    <a href="#deploy">For deployment →</a>
+  </div>
+
+  <div class="callout">
+    <div class="callout-title">⚠ Before anything else: two copies of this project exist</div>
+    <p>The GitHub repo connected to Cloudways (<code class="mono">vivian-kwan/omnichat-analyzer-df</code>) only contains the <strong>server</strong> code — it does not track the Chrome extension at all. It's a separate folder from the Google Drive <code class="mono">development/</code> copy this round of changes was built in.</p>
+    <p>Three server files had drifted between the two before this handover — <strong>they've now been copied into the git repo's working tree</strong> so <code class="mono">git status</code> shows them, but nothing has been committed or pushed:</p>
+    <ul>
+      <li><code class="mono">index.js</code> — new <code class="mono">/api/me</code> route</li>
+      <li><code class="mono">data/skills/home-analysis.txt</code> — fuller keyword lists/examples</li>
+      <li><code class="mono">public/admin/skills.html</code> — reskinned to match the panel</li>
+    </ul>
+    <p>Review the diff yourself before committing — see <a href="#deploy">deployment steps</a> below.</p>
+  </div>
+
+  <section id="team">
+    <h2>For the team</h2>
+    <p class="section-sub">Nothing about how you use the panel day-to-day has moved. Here's what's different.</p>
+
+    <div class="card-grid">
+      <div class="fcard">
+        <h3>It can get out of your way now</h3>
+        <p>A new <code>—</code> button next to close shrinks the panel to just its header bar, so it stops covering the chat underneath. Try it in the demo below — it remembers your choice.</p>
+      </div>
+      <div class="fcard">
+        <h3>Label colors changed</h3>
+        <p>Quotation is now yellow, Quotation start is orange, Sales follow-up is red — a heat scale that gets warmer as a conversation moves toward closing.</p>
+      </div>
+      <div class="fcard">
+        <h3>New: Brand activity alert</h3>
+        <p>The Brand stat box turns red when the brand has sent disproportionately more messages than the customer — a sign a chat may be getting over-pushed or the customer's gone quiet.</p>
+      </div>
+      <div class="fcard">
+        <h3>Settings, split up</h3>
+        <p>Keyword rules, the new alert thresholds (seniors only), and your token/API key now live in three separate cards instead of one long scroll.</p>
+      </div>
+      <div class="fcard">
+        <h3>Summary before tagging</h3>
+        <p>Chat Summary now sits above the tagging dropdown, matching the order you actually work in — read, then tag.</p>
+      </div>
+      <div class="fcard">
+        <h3>AI Analysis — fixed</h3>
+        <p>The <strong>Analysis</strong> button (AI mode) was silently failing every time due to a bug in how the panel talked to the server. That's fixed — it now returns a real summary, price, and per-message labels.</p>
+      </div>
+    </div>
+
+    <div class="demo">
+      <div class="demo-label">Try it — collapse toggle &amp; new label colors</div>
+      <div class="demo-row">
+        <div class="demo-col">
+          <div class="demo-panel" id="demoPanel">
+            <div class="demo-panel-header">
+              <span>⚡ Power Tool</span>
+              <button id="demoToggle" type="button">— collapse</button>
+            </div>
+            <div class="demo-panel-body">
+              Customer: <strong style="color:var(--text)">14</strong> msgs · Brand: <strong style="color:var(--text)">9</strong> msgs<br><br>
+              This is the panel body — it hides when collapsed, and the header stays put so you can always tell it's still connected.
+            </div>
+          </div>
+        </div>
+        <div class="demo-col">
+          <div class="swatch-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
+            <div class="swatch"><span class="dot" style="background:var(--lbl-quotation);"></span>Quotation — yellow</div>
+            <div class="swatch"><span class="dot" style="background:var(--lbl-qstart);"></span>Quotation start — orange</div>
+            <div class="swatch"><span class="dot" style="background:var(--lbl-followup);"></span>Sales follow-up — red</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flag">
+      <strong>Only senior accounts</strong> see the Brand activity alert's threshold fields in Settings. Standard accounts still see the red highlight fire on the Home tab — they just can't change how sensitive it is.
+    </div>
+  </section>
+
+  <section id="deploy">
+    <h2>For deployment</h2>
+    <p class="section-sub">Everything below assumes the standard Cloudways + PM2 + proxy.php setup already documented in <code class="mono">blueprint.html</code>.</p>
+
+    <h3 style="font-size:15px; margin:0 0 12px;">Files changed this round</h3>
+    <div class="table-scroll">
+      <table>
+        <tr><th>File</th><th>Change</th></tr>
+        <tr><td class="file">Plug-in/content.js</td><td>Panel rewired: collapse/expand, reordered Analysis tab, Brand alert, new label colors, identity readout, fixed the AI-analysis JSON parse bug, <code>alert()</code> → inline status lines for tag actions.</td></tr>
+        <tr><td class="file">Plug-in/background.js</td><td>Fixed the same JSON parse bug on the messaging side; added GET support + per-call provider override to <code>serverFetch</code>; added the <code>/api/me</code> call.</td></tr>
+        <tr><td class="file">Plug-in/styles.css</td><td>Full rewrite — one consistent white/red token system replacing scattered inline styles.</td></tr>
+        <tr><td class="file">index.js</td><td>New <code>GET /api/me</code> route (any authenticated user, not senior-only).</td></tr>
+        <tr><td class="file">data/skills/home-analysis.txt</td><td>Same output contract, fuller keyword lists and worked examples.</td></tr>
+        <tr><td class="file">data/skills/deep-insights.txt</td><td>Not touched — a first draft was corrected to match this real, already-working file instead of replacing it.</td></tr>
+        <tr><td class="file">public/admin/skills.html</td><td>Reskinned to match the panel; connect → list → edit flow unchanged.</td></tr>
+        <tr><td class="file">blueprint.html, AGENTS/*.md</td><td>Docs updated to match — see <code class="mono">development/blueprint.html</code> and <code class="mono">development/AGENTS/</code>.</td></tr>
+      </table>
+    </div>
+
+    <h3 style="font-size:15px; margin:0 0 4px;">Steps</h3>
+    <ol class="steps">
+      <li><strong>Review the diff.</strong> In the git repo (<code>vivian-kwan/omnichat-analyzer-df</code>), run <code>git diff</code> — three files are already updated in the working tree (see callout above) but nothing is staged or committed.</li>
+      <li><strong>Commit and push to <code>main</code>.</strong> No new env vars are needed — <code>/api/me</code> reuses the existing <code>EXTENSION_SECRET</code> check and <code>users.json</code>.</li>
+      <li><strong>Deploy via Cloudways.</strong> Trigger the existing "Deployment via GIT" pull (or wait for auto-deploy if configured). <code>data/skills/*.txt</code> and <code>data/users.json</code> are tracked in git — not gitignored — so they deploy automatically, no manual re-copy needed on the server.</li>
+      <li><strong>Restart the Node process.</strong> SSH in, <code>source /home/master/.nvm/nvm.sh</code>, then <code>pm2 restart omnichat-server</code>.</li>
+      <li><strong>Sanity check</strong> — hit <code>https://api.df-creativehome.com/health</code>, then confirm <code>/admin/skills.html</code> shows the new styling.</li>
+      <li><strong>Update the Chrome extension.</strong> The <code>Plug-in/</code> folder isn't in this git repo. If your team runs it as "Load unpacked," just pull the latest <code>development/Plug-in/</code> files locally. If it's distributed via the Chrome Web Store or a private <code>.crx</code>, bump the version in <code>manifest.json</code> and re-publish through your usual channel.</li>
+    </ol>
+
+    <div class="status-box">
+      <strong>Rollback:</strong> since nothing's committed yet, rolling back the server side is just <code>git checkout -- .</code> before you commit. Once committed and deployed, redeploy the previous commit via Cloudways as usual.
+    </div>
+
+    <h3 style="font-size:15px; margin:0 0 12px;">Known gaps, not fixed this round</h3>
+    <div class="flag">
+      <strong><code class="mono">Plug-in/CHROMEWEBSTORE.md</code> is stale.</strong> Its permissions justification still describes direct <code class="mono">api.openai.com</code> / Gemini / DeepSeek host permissions from an older architecture — the current <code class="mono">manifest.json</code> only requests <code class="mono">api.df-creativehome.com</code> and Omnichat. Worth updating before the next Web Store submission, not touched here since it wasn't part of this round's scope.
+    </div>
+    <div class="flag">
+      <strong>Local testing needs a temporary tweak.</strong> <code class="mono">background.js</code>'s <code class="mono">SERVER_BASE</code> points at <code class="mono">proxy.php</code> on Cloudways. To test against a local <code class="mono">npm run dev</code> server, point it at <code class="mono">http://localhost:3000/</code> temporarily and revert before committing.
+    </div>
+  </section>
+
+  <footer>
+    Omnichat Analyzer V2 · Internal handover · Not for external distribution
+  </footer>
+
+</div>
+
+<script>
+  var demoPanel = document.getElementById('demoPanel');
+  var demoToggle = document.getElementById('demoToggle');
+  demoToggle.addEventListener('click', function () {
+    var collapsed = demoPanel.classList.toggle('collapsed');
+    demoToggle.textContent = collapsed ? '▢ expand' : '— collapse';
+  });
+</script>
