@@ -61,6 +61,17 @@
     .status.ok { color: #1e824c; }
     .status.err { color: #b13a30; }
     #authStatus { font-size: 12.5px; margin-top: 8px; min-height: 18px; font-family: 'IBM Plex Mono', monospace; }
+    .sync-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+    .sync-box h2 { font-size: 13px; margin-bottom: 4px; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+    .sync-box .hint { font-size: 12px; color: var(--text3); margin-bottom: 14px; }
+    .sync-box .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .sync-box .btn-secondary:hover:not(:disabled) { background: #fff5f5; border-color: var(--brand); color: var(--brand); }
+    .sync-box button:disabled { opacity: .5; cursor: not-allowed; }
+    .sync-output {
+      margin-top: 12px; background: #17140f; color: #f2efe9; border-radius: 8px; padding: 14px;
+      font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; line-height: 1.6; white-space: pre-wrap;
+      max-height: 300px; overflow-y: auto; display: none;
+    }
   </style>
 </head>
 <body>
@@ -86,6 +97,17 @@
   <div class="skill-list" id="skillListBox" style="display:none">
     <h2>Available Skills</h2>
     <div id="skillCards"></div>
+  </div>
+
+  <div class="sync-box" id="syncBox" style="display:none">
+    <h2>Sync Copy from Spreadsheet</h2>
+    <p class="hint">Reads docs/omnichat-copy-inventory.xlsx and writes matching text/class changes into content.js and skills.html. Local dev server only — Preview first.</p>
+    <div class="row">
+      <button class="btn-secondary" id="btnPreviewSync" onclick="runSync(false)">Preview Sync (dry run)</button>
+      <button class="btn-primary" id="btnApplySync" onclick="runSync(true)" disabled>Apply Sync</button>
+    </div>
+    <pre class="sync-output" id="syncOutput"></pre>
+    <div class="status" id="syncStatus"></div>
   </div>
 
   <div class="editor-box" id="editorBox">
@@ -160,6 +182,7 @@
       statusEl.textContent = '';
       document.getElementById('authBox').style.display = 'none';
       document.getElementById('skillListBox').style.display = 'block';
+      document.getElementById('syncBox').style.display = 'block';
       document.getElementById('userLabel').textContent = `Connected to ${BASE_URL}`;
       renderSkills(data.skills);
     } catch (e) {
@@ -220,6 +243,57 @@
     document.getElementById('editorBox').classList.remove('visible');
     document.querySelectorAll('.skill-card').forEach(c => c.classList.remove('active'));
     currentSkill = '';
+  }
+
+  async function runSync(apply) {
+    const outEl = document.getElementById('syncOutput');
+    const statusEl = document.getElementById('syncStatus');
+    const previewBtn = document.getElementById('btnPreviewSync');
+    const applyBtn = document.getElementById('btnApplySync');
+
+    previewBtn.disabled = true;
+    applyBtn.disabled = true;
+    statusEl.textContent = apply ? 'Applying…' : 'Previewing…';
+    statusEl.className = 'status';
+
+    try {
+      const res = await apiFetch('/api/dev/sync-copy', {
+        method: 'POST',
+        body: JSON.stringify({ apply })
+      });
+      if (res.status === 404) {
+        statusEl.textContent = 'Dev tools not enabled on this server (ENABLE_DEV_TOOLS is off) — only works against your local dev server.';
+        statusEl.className = 'status err';
+        previewBtn.disabled = false;
+        return;
+      }
+      const data = await res.json();
+      if (!data.success) {
+        statusEl.textContent = data.error || 'Sync failed.';
+        statusEl.className = 'status err';
+        previewBtn.disabled = false;
+        applyBtn.disabled = !outEl.dataset.previewed;
+        return;
+      }
+      outEl.textContent = data.data.output;
+      outEl.style.display = 'block';
+      if (apply) {
+        statusEl.textContent = '✓ Applied. Reload the unpacked extension and refresh this page to see changes.';
+        statusEl.className = 'status ok';
+        outEl.dataset.previewed = '';
+        applyBtn.disabled = true;
+      } else {
+        statusEl.textContent = 'Preview complete — review the output above, then Apply if it looks right.';
+        statusEl.className = 'status';
+        outEl.dataset.previewed = '1';
+        applyBtn.disabled = false;
+      }
+      previewBtn.disabled = false;
+    } catch (e) {
+      statusEl.textContent = 'Network error.';
+      statusEl.className = 'status err';
+      previewBtn.disabled = false;
+    }
   }
 </script>
 

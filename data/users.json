@@ -3,6 +3,10 @@
     "REPLACE-WITH-YOUR-TOKEN": {
       "name": "Vivian",
       "role": "senior"
+    },
+    "local-test-token": {
+      "name": "Local Tester",
+      "role": "senior"
     }
   }
 }

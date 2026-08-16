@@ -6,6 +6,7 @@ const fs = require('fs');
 
 const analyzeRouter = require('./routes/analyze');
 const skillsRouter = require('./routes/skills');
+const templatesRouter = require('./routes/templates');
 const { authMiddleware } = require('./middleware/auth');
 
 const app = express();
@@ -27,6 +28,17 @@ app.get('/api/me', authMiddleware, (req, res) => {
 // API routes
 app.use('/api', analyzeRouter);
 app.use('/api', skillsRouter);
+app.use('/api', templatesRouter);
+
+// Local-dev-only routes (copy-inventory sync) — only exist at all when
+// ENABLE_DEV_TOOLS=true is explicitly set in .env. Never set this on a
+// deployed server; the routes shell out to a script that only makes sense
+// on the developer's own machine.
+if (process.env.ENABLE_DEV_TOOLS === 'true') {
+  const devToolsRouter = require('./routes/dev-tools');
+  app.use('/api', devToolsRouter);
+  console.log('Dev tools enabled: POST /api/dev/sync-copy');
+}
 
 // Health check
 app.get('/health', (req, res) => res.json({ ok: true }));

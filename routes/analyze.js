@@ -62,6 +62,62 @@ async function callAI(provider, apiKey, systemPrompt, userMessage) {
   throw new Error(`Unsupported provider: ${provider}`);
 }
 
+// Same three providers as callAI(), but no JSON-mode forcing — for routes
+// that want free-form text back (bullet points, prose) rather than the
+// structured object /api/analyze needs.
+async function callAIPlainText(provider, apiKey, model, systemPrompt, userMessage, temperature) {
+  if (provider === 'openai' || provider === 'deepseek') {
+    const isOpenAI = provider === 'openai';
+    const url = isOpenAI
+      ? 'https://api.openai.com/v1/chat/completions'
+      : 'https://api.deepseek.com/chat/completions';
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
+        temperature
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `${provider} API error: ${res.status}`);
+    }
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }
+
+  if (provider === 'gemini') {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+        generationConfig: { temperature }
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Gemini API error: ${res.status}`);
+    }
+    const data = await res.json();
+    return data.candidates[0].content.parts[0].text;
+  }
+
+  throw new Error(`Unsupported provider: ${provider}`);
+}
+
+function formatMarkdown(text) {
+  return text
+    .replace(/\n/g, '<br>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/## (.*?)<br>/g, "<h3 style='color:#FF0000; margin-top:12px;'>$1</h3>");
+}
+
 // POST /api/analyze — home tab chat analysis
 router.post('/analyze', authMiddleware, async (req, res) => {
   const { provider, apiKey, messages } = req.body;
@@ -97,8 +153,11 @@ router.post('/deep-analyze', authMiddleware, async (req, res) => {
       const model = isOpenAI ? 'o3-mini' : 'deepseek-reasoner';
       const payload = {
         model,
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }]
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
+        response_format: { type: 'json_object' }
       };
+      // o3-mini is a reasoning model and rejects a custom temperature — only
+      // deepseek-reasoner gets one, same as before this route returned JSON.
       if (provider === 'deepseek') payload.temperature = 0.5;
       const aiRes = await fetch(url, {
         method: 'POST',
@@ -116,7 +175,7 @@ router.post('/deep-analyze', authMiddleware, async (req, res) => {
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-          generationConfig: { temperature: 0.5 }
+          generationConfig: { temperature: 0.5, responseMimeType: 'application/json' }
         })
       });
       if (!aiRes.ok) throw new Error(`Gemini API error: ${aiRes.status}`);
@@ -126,13 +185,30 @@ router.post('/deep-analyze', authMiddleware, async (req, res) => {
       throw new Error(`Unsupported provider: ${provider}`);
     }
 
-    // Format markdown for extension UI
-    const formatted = result
-      .replace(/\n/g, '<br>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/## (.*?)<br>/g, "<h3 style='color:#FF0000; margin-top:12px;'>$1</h3>");
+    // Raw JSON string, same shape as /api/analyze — the extension parses it
+    // and renders the accordion itself, instead of receiving pre-formatted HTML.
+    res.json({ success: true, data: result });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
 
-    res.json({ success: true, data: formatted });
+// POST /api/suggest-followup — home tab "建議追問" button. Takes the summary
+// /api/analyze already generated (not the raw chat) and suggests concrete
+// next questions/talking points. Kept as a separate lightweight call rather
+// than re-running full chat analysis, since the summary already has what's
+// needed as context.
+router.post('/suggest-followup', authMiddleware, async (req, res) => {
+  const { provider, apiKey, summary } = req.body;
+  if (!provider || !apiKey || !summary) {
+    return res.status(400).json({ error: 'Missing provider, apiKey, or summary.' });
+  }
+  try {
+    const systemPrompt = loadSkill('followup-suggestions');
+    const userMessage = `Conversation summary:\n${summary}`;
+    const model = provider === 'openai' ? 'gpt-4o-mini' : provider === 'gemini' ? 'gemini-2.5-flash' : 'deepseek-chat';
+    const result = await callAIPlainText(provider, apiKey, model, systemPrompt, userMessage, 0.3);
+    res.json({ success: true, data: formatMarkdown(result) });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
