@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const router = express.Router();
 const { authMiddleware } = require('../middleware/auth');
+const { callAI } = require('../lib/ai');
 
 const SKILLS_DIR = path.join(__dirname, '../data/skills');
 
@@ -12,54 +13,6 @@ function loadSkill(name) {
   } catch (e) {
     throw new Error(`Skill file "${name}.txt" not found.`);
   }
-}
-
-async function callAI(provider, apiKey, systemPrompt, userMessage) {
-  if (provider === 'openai' || provider === 'deepseek') {
-    const isOpenAI = provider === 'openai';
-    const url = isOpenAI
-      ? 'https://api.openai.com/v1/chat/completions'
-      : 'https://api.deepseek.com/chat/completions';
-    const model = isOpenAI ? 'gpt-4o-mini' : 'deepseek-chat';
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      })
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `${provider} API error: ${res.status}`);
-    }
-    const data = await res.json();
-    return data.choices[0].message.content;
-  }
-
-  if (provider === 'gemini') {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-        generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
-      })
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `Gemini API error: ${res.status}`);
-    }
-    const data = await res.json();
-    return data.candidates[0].content.parts[0].text;
-  }
-
-  throw new Error(`Unsupported provider: ${provider}`);
 }
 
 // Same three providers as callAI(), but no JSON-mode forcing — for routes
@@ -199,13 +152,18 @@ router.post('/deep-analyze', authMiddleware, async (req, res) => {
 // than re-running full chat analysis, since the summary already has what's
 // needed as context.
 router.post('/suggest-followup', authMiddleware, async (req, res) => {
-  const { provider, apiKey, summary } = req.body;
+  const { provider, apiKey, summary, labelCounts, latestStage } = req.body;
   if (!provider || !apiKey || !summary) {
     return res.status(400).json({ error: 'Missing provider, apiKey, or summary.' });
   }
   try {
     const systemPrompt = loadSkill('followup-suggestions');
-    const userMessage = `Conversation summary:\n${summary}`;
+    let userMessage = `Conversation summary:\n${summary}`;
+    if (labelCounts && typeof labelCounts === 'object') {
+      const countsText = Object.entries(labelCounts).map(([label, count]) => `${label}: ${count}`).join('\n');
+      if (countsText) userMessage += `\n\nBrand message count per stage:\n${countsText}`;
+    }
+    userMessage += `\n\nLatest stage (most recent brand message's stage, i.e. where the conversation currently stands): ${latestStage || 'none yet — no brand message has a real stage'}`;
     const model = provider === 'openai' ? 'gpt-4o-mini' : provider === 'gemini' ? 'gemini-2.5-flash' : 'deepseek-chat';
     const result = await callAIPlainText(provider, apiKey, model, systemPrompt, userMessage, 0.3);
     res.json({ success: true, data: formatMarkdown(result) });

@@ -8,7 +8,7 @@
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
     :root {
       --surface2: #fafafa; --border: #e0e0e0; --text: #111111; --text2: #555555; --text3: #888888;
-      --brand: #FF0000; --brand-hover: #cc0000;
+      --brand: #FF0000; --brand-hover: #cc0000; --structure: #3b5169; --structure-wash: #eef2f6;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--surface2); color: var(--text); }
@@ -22,20 +22,23 @@
     .auth-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; }
     .auth-box h2 { font-size: 13px; margin-bottom: 14px; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
     .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    input[type=text], input[type=password] {
-      flex: 1; min-width: 200px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit;
+    input[type=text], input[type=password], select {
+      flex: 1; min-width: 200px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text);
     }
-    input[type=text]:focus, input[type=password]:focus { outline: 2px solid var(--brand); outline-offset: -1px; border-color: transparent; }
+    input[type=text]:focus, input[type=password]:focus, select:focus { outline: 2px solid var(--brand); outline-offset: -1px; border-color: transparent; }
     button {
       padding: 9px 18px; border: none; border-radius: 8px; cursor: pointer;
       font-size: 13px; font-weight: 600; transition: background .15s;
     }
+    button:disabled { opacity: .5; cursor: not-allowed; }
     .btn-primary { background: var(--brand); color: #fff; }
-    .btn-primary:hover { background: var(--brand-hover); }
+    .btn-primary:hover:not(:disabled) { background: var(--brand-hover); }
     .btn-save { background: var(--brand); color: #fff; }
-    .btn-save:hover { background: var(--brand-hover); }
+    .btn-save:hover:not(:disabled) { background: var(--brand-hover); }
     .btn-cancel { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
-    .btn-cancel:hover { background: #fff5f5; border-color: var(--brand); color: var(--brand); }
+    .btn-cancel:hover:not(:disabled) { background: #fff5f5; border-color: var(--brand); color: var(--brand); }
+    .btn-structure { background: var(--structure); color: #fff; }
+    .btn-structure:hover:not(:disabled) { opacity: .88; }
     .skill-list { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; }
     .skill-list h2 { font-size: 13px; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; margin-bottom: 14px; }
     .skill-card {
@@ -50,13 +53,62 @@
     .editor-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; display: none; }
     .editor-box.visible { display: block; }
     .editor-box h2 { font-size: 13px; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; margin-bottom: 12px; }
+    .editor-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .editor-top h2 { margin-bottom: 0; }
+    .version-pill {
+      display: inline-flex; align-items: center; gap: 7px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+      color: var(--structure); background: var(--structure-wash); border: 1px solid var(--border);
+      padding: 5px 10px 5px 8px; border-radius: 999px; cursor: pointer; margin-left: auto;
+    }
+    .version-pill:hover { border-color: var(--structure); }
+    .version-pill .chevron { display: inline-block; transition: transform .15s; font-size: 9px; }
+    .version-pill.open .chevron { transform: rotate(180deg); }
+    .history { display: none; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+    .history.open { display: block; }
+    .history-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; font-size: 12.5px; border-top: 1px solid var(--border); }
+    .history-row:first-child { border-top: none; }
+    .history-row.current { background: #fff5f5; }
+    .history-row .vnum { font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--structure); width: 34px; flex-shrink: 0; }
+    .history-row .who {
+      width: 22px; height: 22px; border-radius: 50%; background: var(--structure); color: #fff;
+      font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .history-row .summary { flex: 1; min-width: 0; }
+    .history-row .summary .change { color: var(--text); }
+    .history-row .summary .when { color: var(--text3); font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; }
+    .history-row .diffstat { font-family: 'IBM Plex Mono', monospace; font-size: 11px; flex-shrink: 0; white-space: nowrap; }
+    .history-row .diffstat .add { color: #1e824c; }
+    .history-row .diffstat .rem { color: var(--brand); }
+    .history-row .actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .link-btn { background: none; border: none; font-size: 11.5px; font-weight: 600; color: var(--structure); cursor: pointer; padding: 4px 8px; border-radius: 5px; }
+    .link-btn:hover { background: var(--structure-wash); }
+    .badge-current {
+      font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em;
+      color: #1e824c; background: #eafaf0; padding: 2px 7px; border-radius: 999px; flex-shrink: 0;
+    }
     textarea {
-      width: 100%; height: 420px; padding: 14px; border: 1px solid var(--border);
+      width: 100%; height: 380px; padding: 14px; border: 1px solid var(--border);
       border-radius: 8px; font-size: 12.5px; font-family: 'IBM Plex Mono', 'Menlo', 'Consolas', monospace;
       line-height: 1.6; resize: vertical; color: var(--text);
     }
     textarea:focus { outline: 2px solid var(--brand); outline-offset: -1px; }
-    .editor-actions { margin-top: 12px; display: flex; gap: 10px; }
+    .test-zone { margin: 16px 0; border: 1px solid var(--border); border-radius: 8px; padding: 16px; background: var(--surface2); }
+    .test-zone h3 { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; margin-bottom: 4px; }
+    .test-zone .hint { font-size: 12px; color: var(--text3); margin-bottom: 12px; }
+    .creds-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .creds-row select { flex: 0 0 130px; min-width: 0; }
+    .csv-paste { width: 100%; height: 90px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 11.5px; font-family: 'IBM Plex Mono', monospace; resize: vertical; margin-bottom: 6px; }
+    .csv-status { font-size: 11.5px; color: var(--text3); margin-bottom: 12px; font-family: 'IBM Plex Mono', monospace; }
+    .csv-status.ready { color: #1e824c; }
+    .run-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .sample-strip { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 8px; margin-top: 14px; }
+    .sample-card { flex: 0 0 200px; border: 1px solid var(--border); border-radius: 8px; padding: 11px 12px; background: #fff; font-size: 12px; }
+    .sample-card .contact { font-weight: 600; margin-bottom: 6px; }
+    .sample-card .body { font-size: 11.5px; color: var(--text2); line-height: 1.5; white-space: pre-wrap; }
+    .sample-card .price { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; font-weight: 600; color: var(--brand); margin-top: 6px; }
+    .sample-card .err { color: var(--brand); font-size: 11px; }
+    .editor-actions { margin-top: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .editor-actions input[type=text] { flex: 1; min-width: 160px; }
     .status { font-size: 12.5px; margin-top: 10px; min-height: 20px; font-family: 'IBM Plex Mono', monospace; }
     .status.ok { color: #1e824c; }
     .status.err { color: #b13a30; }
@@ -66,7 +118,6 @@
     .sync-box .hint { font-size: 12px; color: var(--text3); margin-bottom: 14px; }
     .sync-box .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
     .sync-box .btn-secondary:hover:not(:disabled) { background: #fff5f5; border-color: var(--brand); color: var(--brand); }
-    .sync-box button:disabled { opacity: .5; cursor: not-allowed; }
     .sync-output {
       margin-top: 12px; background: #17140f; color: #f2efe9; border-radius: 8px; padding: 14px;
       font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; line-height: 1.6; white-space: pre-wrap;
@@ -111,10 +162,46 @@
   </div>
 
   <div class="editor-box" id="editorBox">
-    <h2>Editing: <span id="editorTitle"></span></h2>
+    <div class="editor-top">
+      <h2>Editing: <span id="editorTitle"></span></h2>
+      <button class="version-pill" id="versionToggle" onclick="toggleHistory()">
+        <span id="versionPillText">v1</span><span class="chevron">▾</span>
+      </button>
+    </div>
+
+    <div class="history" id="historyPanel"></div>
+
     <textarea id="editorContent"></textarea>
+
+    <div class="test-zone">
+      <h3>Test this draft</h3>
+      <p class="hint">Runs the text above (unsaved) against sample conversations. Nothing here touches the live skill file or version history.</p>
+
+      <div class="creds-row">
+        <select id="testProvider">
+          <option value="openai">ChatGPT</option>
+          <option value="gemini">Gemini</option>
+          <option value="deepseek">DeepSeek</option>
+        </select>
+        <input type="password" id="testApiKey" placeholder="API key for the selected provider" />
+      </div>
+
+      <label style="font-size:11.5px; color:var(--text3); display:block; margin-bottom:4px;">
+        Paste a 下載對話 CSV export (客戶總覽 → 下載 CSV)
+      </label>
+      <textarea class="csv-paste" id="csvPaste" placeholder="Chat,Contact,Sender,Message,IsAd&#10;1,Billy Shum,Customer,..."></textarea>
+      <div class="csv-status" id="csvStatus">No sample data loaded yet.</div>
+
+      <div class="run-row">
+        <button class="btn-structure" id="btnRunTest" onclick="runSampleTest()" disabled>Run Sample Test</button>
+      </div>
+
+      <div class="sample-strip" id="sampleResults"></div>
+    </div>
+
     <div class="editor-actions">
-      <button class="btn-save" onclick="saveSkill()">Save</button>
+      <input type="text" id="saveLabel" placeholder="What changed? (optional, shown in history)" />
+      <button class="btn-save" onclick="saveSkill()">Save New Version</button>
       <button class="btn-cancel" onclick="closeEditor()">Cancel</button>
     </div>
     <div class="status" id="saveStatus"></div>
@@ -127,6 +214,7 @@
   let TOKEN = '';
   let SECRET = '';
   let currentSkill = '';
+  let parsedSamples = [];
 
   // Allow extension secret to be baked in at deployment time via meta tag or just entered via URL param
   const params = new URLSearchParams(location.search);
@@ -185,6 +273,7 @@
       document.getElementById('syncBox').style.display = 'block';
       document.getElementById('userLabel').textContent = `Connected to ${BASE_URL}`;
       renderSkills(data.skills);
+      restoreTestCreds();
     } catch (e) {
       statusEl.textContent = 'Could not reach server. Check URL and try again.';
       statusEl.className = 'err';
@@ -212,23 +301,96 @@
     document.getElementById('editorTitle').textContent = name;
     document.getElementById('editorContent').value = data.content || '';
     document.getElementById('saveStatus').textContent = '';
+    document.getElementById('saveLabel').value = '';
+    document.getElementById('sampleResults').innerHTML = '';
+    document.getElementById('historyPanel').classList.remove('open');
+    document.getElementById('versionToggle').classList.remove('open');
     document.getElementById('editorBox').classList.add('visible');
+    loadVersionSummary();
+  }
+
+  // Just fetches the count for the pill label — the full list is only
+  // rendered when the panel is actually opened.
+  async function loadVersionSummary() {
+    const res = await apiFetch(`/api/skills/${currentSkill}/versions`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.success) return;
+    const current = data.versions.find(v => v.current);
+    document.getElementById('versionPillText').textContent = current ? `v${current.version}` : 'v1';
+  }
+
+  async function toggleHistory() {
+    const panel = document.getElementById('historyPanel');
+    const pill = document.getElementById('versionToggle');
+    const opening = !panel.classList.contains('open');
+    panel.classList.toggle('open', opening);
+    pill.classList.toggle('open', opening);
+    if (opening) await renderHistory();
+  }
+
+  async function renderHistory() {
+    const panel = document.getElementById('historyPanel');
+    panel.innerHTML = '<div class="history-row">Loading…</div>';
+    const res = await apiFetch(`/api/skills/${currentSkill}/versions`);
+    const data = await res.json();
+    if (!data.success) { panel.innerHTML = `<div class="history-row">${data.error || 'Could not load history.'}</div>`; return; }
+
+    panel.innerHTML = data.versions.map(v => {
+      const when = v.timestamp ? new Date(v.timestamp).toLocaleString() : 'now';
+      const who = v.author ? v.author.slice(0, 2).toUpperCase() : '—';
+      const label = v.label || (v.current ? '(live version)' : '(no description)');
+      const diff = `<span class="add">+${v.diffAdded}</span> <span class="rem">−${v.diffRemoved}</span>`;
+      const actions = v.current
+        ? `<span class="badge-current">Live</span>`
+        : `<span class="actions">
+             <button class="link-btn" onclick="previewVersion('${v.id}')">Preview</button>
+             <button class="link-btn" onclick="restoreVersion('${v.id}')">Restore to draft</button>
+           </span>`;
+      return `<div class="history-row${v.current ? ' current' : ''}">
+        <span class="vnum">v${v.version}</span>
+        <span class="who">${who}</span>
+        <span class="summary"><span class="change">${escapeHtml(label)}</span><br><span class="when">${when}</span></span>
+        <span class="diffstat">${diff}</span>
+        ${actions}
+      </div>`;
+    }).join('');
+  }
+
+  async function previewVersion(id) {
+    const res = await apiFetch(`/api/skills/${currentSkill}/versions/${id}`);
+    const data = await res.json();
+    if (!data.success) { alert(data.error || 'Could not load that version.'); return; }
+    alert(`Version from ${new Date(data.timestamp).toLocaleString()} by ${data.author}:\n\n${data.content}`);
+  }
+
+  async function restoreVersion(id) {
+    const res = await apiFetch(`/api/skills/${currentSkill}/versions/${id}`);
+    const data = await res.json();
+    if (!data.success) { alert(data.error || 'Could not load that version.'); return; }
+    if (!confirm('Load this version into the editor as a draft? It will not be saved until you click Save New Version.')) return;
+    document.getElementById('editorContent').value = data.content;
+    document.getElementById('saveLabel').value = `Restored from ${new Date(data.timestamp).toLocaleDateString()} version`;
+    toggleHistory();
   }
 
   async function saveSkill() {
     const content = document.getElementById('editorContent').value;
+    const label = document.getElementById('saveLabel').value.trim();
     const statusEl = document.getElementById('saveStatus');
     statusEl.textContent = 'Saving…';
     statusEl.className = 'status';
     try {
       const res = await apiFetch(`/api/skills/${currentSkill}`, {
         method: 'PUT',
-        body: JSON.stringify({ content })
+        body: JSON.stringify({ content, label })
       });
       const data = await res.json();
       if (data.success) {
-        statusEl.textContent = '✓ Saved successfully.';
+        statusEl.textContent = `✓ Saved as v${data.version}.`;
         statusEl.className = 'status ok';
+        document.getElementById('saveLabel').value = '';
+        loadVersionSummary();
       } else {
         statusEl.textContent = data.error || 'Save failed.';
         statusEl.className = 'status err';
@@ -243,6 +405,133 @@
     document.getElementById('editorBox').classList.remove('visible');
     document.querySelectorAll('.skill-card').forEach(c => c.classList.remove('active'));
     currentSkill = '';
+  }
+
+  // ---- Test-draft: paste-CSV sample parsing ----
+
+  function restoreTestCreds() {
+    const saved = JSON.parse(localStorage.getItem('omniSkillTestCreds') || '{}');
+    if (saved.provider) document.getElementById('testProvider').value = saved.provider;
+    if (saved.apiKey) document.getElementById('testApiKey').value = saved.apiKey;
+  }
+  function persistTestCreds() {
+    localStorage.setItem('omniSkillTestCreds', JSON.stringify({
+      provider: document.getElementById('testProvider').value,
+      apiKey: document.getElementById('testApiKey').value
+    }));
+  }
+  document.getElementById('testProvider').addEventListener('change', persistTestCreds);
+  document.getElementById('testApiKey').addEventListener('change', persistTestCreds);
+
+  // Small RFC4180-ish CSV parser (handles quoted fields with embedded
+  // commas/newlines and "" escapes) — downloadChatsCsv() in the extension
+  // quotes any field containing a comma, quote, or newline, so a naive
+  // split(',') would break on multi-line message text.
+  function parseCsv(text) {
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    const s = text.replace(/^﻿/, '').replace(/\r\n/g, '\n');
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (s[i + 1] === '"') { field += '"'; i++; } else { inQuotes = false; }
+        } else field += c;
+      } else if (c === '"') {
+        inQuotes = true;
+      } else if (c === ',') {
+        row.push(field); field = '';
+      } else if (c === '\n') {
+        row.push(field); rows.push(row); row = []; field = '';
+      } else {
+        field += c;
+      }
+    }
+    if (field || row.length) { row.push(field); rows.push(row); }
+    return rows.filter(r => r.length > 1 || r[0] !== '');
+  }
+
+  // downloadChatsCsv() header: Chat, Contact, Sender, Message, IsAd — groups
+  // rows by Chat number, drops ad-click stub rows (the real analyze pipeline
+  // never sends those to the AI either), and reshapes into the {id, sender,
+  // text} form /api/analyze itself sends.
+  function csvToSamples(text) {
+    const rows = parseCsv(text);
+    if (!rows.length) return [];
+    const header = rows[0].map(h => h.trim().toLowerCase());
+    const idx = { chat: header.indexOf('chat'), contact: header.indexOf('contact'), sender: header.indexOf('sender'), message: header.indexOf('message'), isad: header.indexOf('isad') };
+    if (idx.chat === -1 || idx.sender === -1 || idx.message === -1) return [];
+
+    const byChat = new Map();
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r || r.length < 3) continue;
+      const chatKey = r[idx.chat];
+      if (!byChat.has(chatKey)) byChat.set(chatKey, { name: r[idx.contact] || `Chat ${chatKey}`, messages: [] });
+      if (idx.isad !== -1 && (r[idx.isad] === '是' || r[idx.isad] === 'true')) continue;
+      const entry = byChat.get(chatKey);
+      entry.messages.push({ id: entry.messages.length, sender: r[idx.sender], text: r[idx.message] });
+    }
+    return Array.from(byChat.values()).filter(c => c.messages.length > 0);
+  }
+
+  document.getElementById('csvPaste').addEventListener('input', (e) => {
+    parsedSamples = csvToSamples(e.target.value).slice(0, 10);
+    const statusEl = document.getElementById('csvStatus');
+    const runBtn = document.getElementById('btnRunTest');
+    if (parsedSamples.length > 0) {
+      statusEl.textContent = `✓ ${parsedSamples.length} conversation(s) ready to test.`;
+      statusEl.className = 'csv-status ready';
+      runBtn.disabled = false;
+    } else {
+      statusEl.textContent = e.target.value.trim() ? 'Could not find any conversations in that paste — check it\'s a 下載對話 CSV export.' : 'No sample data loaded yet.';
+      statusEl.className = 'csv-status';
+      runBtn.disabled = true;
+    }
+  });
+
+  async function runSampleTest() {
+    const content = document.getElementById('editorContent').value;
+    const provider = document.getElementById('testProvider').value;
+    const apiKey = document.getElementById('testApiKey').value.trim();
+    const runBtn = document.getElementById('btnRunTest');
+    const resultsEl = document.getElementById('sampleResults');
+
+    if (!apiKey) { alert('Enter an API key for the selected provider first.'); return; }
+    if (!parsedSamples.length) { alert('Paste a 下載對話 CSV export first.'); return; }
+
+    runBtn.disabled = true; runBtn.textContent = 'Running…';
+    resultsEl.innerHTML = '';
+    try {
+      const res = await apiFetch(`/api/skills/${currentSkill}/test`, {
+        method: 'POST',
+        body: JSON.stringify({ content, provider, apiKey, samples: parsedSamples })
+      });
+      const data = await res.json();
+      if (!data.success) { alert(data.error || 'Test run failed.'); return; }
+      resultsEl.innerHTML = data.results.map(r => renderSampleCard(r)).join('');
+    } catch (e) {
+      alert('Network error running the sample test.');
+    } finally {
+      runBtn.disabled = false; runBtn.textContent = 'Run Sample Test';
+    }
+  }
+
+  function renderSampleCard(r) {
+    if (!r.success) {
+      return `<div class="sample-card"><div class="contact">${escapeHtml(r.name)}</div><div class="err">${escapeHtml(r.error)}</div></div>`;
+    }
+    let parsed = null;
+    try { parsed = JSON.parse(String(r.raw).replace(/```json/g, '').replace(/```/g, '').trim()); } catch (e) { /* not JSON — show raw below */ }
+    if (parsed && (parsed.summary || parsed.total_price)) {
+      const price = parsed.total_price ? `<div class="price">Price: ${escapeHtml(String(parsed.total_price))}</div>` : '';
+      return `<div class="sample-card"><div class="contact">${escapeHtml(r.name)}</div><div class="body">${escapeHtml(parsed.summary || '')}</div>${price}</div>`;
+    }
+    return `<div class="sample-card"><div class="contact">${escapeHtml(r.name)}</div><div class="body">${escapeHtml(String(r.raw))}</div></div>`;
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   async function runSync(apply) {
