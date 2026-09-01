@@ -1,11 +1,7 @@
 {
   "tokens": {
-    "REPLACE-WITH-YOUR-TOKEN": {
+    "vivian-1014d195-2026": {
       "name": "Vivian",
-      "role": "senior"
-    },
-    "local-test-token": {
-      "name": "Local Tester",
       "role": "senior"
     }
   }
