@@ -29,13 +29,18 @@ function authMiddleware(req, res, next) {
     return res.status(403).json({ error: 'Unrecognised token. Ask your admin to add you.' });
   }
 
-  req.user = user;
+  // token itself is attached (not just name/role) so routes can do their own
+  // per-resource ownership checks (e.g. "did this user create this
+  // template?") without re-reading the header — see routes/templates.js.
+  req.user = { ...user, token };
   next();
 }
 
-// Use after authMiddleware — blocks non-senior users
+// Use after authMiddleware — blocks anyone who isn't senior or admin. Kept
+// the name seniorOnly (rather than renaming everywhere) since admin is a
+// strict superset of senior's access, not a separate tier with its own gate.
 function seniorOnly(req, res, next) {
-  if (req.user.role !== 'senior') {
+  if (req.user.role !== 'senior' && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'This action requires senior access.' });
   }
   next();
