@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Skill Editor — Omnichat Analyzer</title>
+  <!-- Loaded from jsDelivr (plain npm package mirror), not cdn.tiny.cloud —
+       avoids Tiny's own "Cloud" service, which requires a free API key/
+       account and shows a nag/watermark without one. Same open-source
+       package either way, just a neutral host instead of Tiny's own CDN. -->
+  <script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js" referrerpolicy="origin"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
     :root {
@@ -123,6 +128,13 @@
       font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; line-height: 1.6; white-space: pre-wrap;
       max-height: 300px; overflow-y: auto; display: none;
     }
+    .announcement-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+    .announcement-box h2 { font-size: 13px; margin-bottom: 4px; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+    .announcement-box .hint { font-size: 12px; color: var(--text3); margin-bottom: 14px; }
+    .announcement-box label { display: block; font-size: 11.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; margin: 14px 0 6px; }
+    .announcement-box label:first-of-type { margin-top: 0; }
+    .cta-columns { display: flex; gap: 20px; flex-wrap: wrap; }
+    .cta-columns > div { flex: 1; min-width: 280px; }
   </style>
 </head>
 <body>
@@ -148,6 +160,34 @@
   <div class="skill-list" id="skillListBox" style="display:none">
     <h2>Available Skills</h2>
     <div id="skillCards"></div>
+  </div>
+
+  <div class="announcement-box" id="announcementBox" style="display:none">
+    <h2>Announcement Bar</h2>
+    <p class="hint">Shown at the top of every rep's panel on every fresh load (they can dismiss it for the rest of that session — it comes back next time they reopen the panel). Each CTA opens a popup showing the rich text below it.</p>
+
+    <label>Bar text</label>
+    <input type="text" id="annContent" placeholder="此軟件為試用版">
+
+    <div class="cta-columns" style="margin-top:16px;">
+      <div>
+        <label>CTA 1 label</label>
+        <input type="text" id="annCta1Text" placeholder="使用手冊">
+        <label>CTA 1 popup content</label>
+        <textarea id="annCta1Content"></textarea>
+      </div>
+      <div>
+        <label>CTA 2 label</label>
+        <input type="text" id="annCta2Text" placeholder="每月KPI">
+        <label>CTA 2 popup content</label>
+        <textarea id="annCta2Content"></textarea>
+      </div>
+    </div>
+
+    <div class="editor-actions">
+      <button class="btn-save" onclick="saveAnnouncement()">Save Announcement</button>
+    </div>
+    <div class="status" id="annStatus"></div>
   </div>
 
   <div class="sync-box" id="syncBox" style="display:none">
@@ -270,10 +310,12 @@
       statusEl.textContent = '';
       document.getElementById('authBox').style.display = 'none';
       document.getElementById('skillListBox').style.display = 'block';
+      document.getElementById('announcementBox').style.display = 'block';
       document.getElementById('syncBox').style.display = 'block';
       document.getElementById('userLabel').textContent = `Connected to ${BASE_URL}`;
       renderSkills(data.skills);
       restoreTestCreds();
+      loadAnnouncementEditor();
     } catch (e) {
       statusEl.textContent = 'Could not reach server. Check URL and try again.';
       statusEl.className = 'err';
@@ -532,6 +574,84 @@
 
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // ---- Announcement bar ----
+
+  // tinymce.init() resolves once both CTA editors are ready — loadAnnouncementEditor
+  // awaits this before calling setContent, so it's safe regardless of whether
+  // login finishes before or after TinyMCE's own (fast, local) init.
+  const tinyMceReadyPromise = tinymce.init({
+    selector: '#annCta1Content, #annCta2Content',
+    height: 240,
+    menubar: false,
+    branding: false,
+    promotion: false,
+    plugins: 'table image link lists',
+    toolbar: 'bold italic underline forecolor backcolor | fontfamily fontsize | bullist numlist | link image table | removeformat',
+    // No images_upload_handler configured — per TinyMCE's documented default,
+    // inserted/pasted images are embedded as base64 data URIs directly in
+    // getContent() instead of needing an upload endpoint. See the size
+    // warning in saveAnnouncement() for the tradeoff this brings.
+  });
+
+  async function loadAnnouncementEditor() {
+    const res = await apiFetch('/api/announcement');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.success) return;
+    document.getElementById('annContent').value = data.data.content || '';
+    document.getElementById('annCta1Text').value = data.data.cta1Text || '';
+    document.getElementById('annCta2Text').value = data.data.cta2Text || '';
+    await tinyMceReadyPromise;
+    tinymce.get('annCta1Content').setContent(data.data.cta1Content || '');
+    tinymce.get('annCta2Content').setContent(data.data.cta2Content || '');
+  }
+
+  async function saveAnnouncement() {
+    const statusEl = document.getElementById('annStatus');
+    await tinyMceReadyPromise;
+    const cta1Content = tinymce.get('annCta1Content').getContent();
+    const cta2Content = tinymce.get('annCta2Content').getContent();
+
+    // Size warning — base64-embedded images are what typically blow this up,
+    // since they land inline in the HTML rather than as a separate file.
+    // Blob byte length is a close proxy for what actually lands in
+    // announcement.json (UTF-8 byte count, not just character count).
+    const totalBytes = new Blob([cta1Content + cta2Content]).size;
+    const WARN_BYTES = 2 * 1024 * 1024; // 2MB combined across both CTAs
+    if (totalBytes > WARN_BYTES) {
+      const mb = (totalBytes / (1024 * 1024)).toFixed(1);
+      if (!confirm(`目前內容大約 ${mb}MB（通常係圖片），會令 announcement.json 變得好大。確定要繼續儲存？`)) {
+        return;
+      }
+    }
+
+    statusEl.textContent = 'Saving…';
+    statusEl.className = 'status';
+    try {
+      const res = await apiFetch('/api/announcement', {
+        method: 'PUT',
+        body: JSON.stringify({
+          content: document.getElementById('annContent').value,
+          cta1Text: document.getElementById('annCta1Text').value,
+          cta1Content,
+          cta2Text: document.getElementById('annCta2Text').value,
+          cta2Content
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        statusEl.textContent = '✓ Saved. Reps will see the update next time they (re)open the panel.';
+        statusEl.className = 'status ok';
+      } else {
+        statusEl.textContent = data.error || 'Save failed.';
+        statusEl.className = 'status err';
+      }
+    } catch (e) {
+      statusEl.textContent = 'Network error.';
+      statusEl.className = 'status err';
+    }
   }
 
   async function runSync(apply) {
