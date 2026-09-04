@@ -9,6 +9,43 @@ const SKILLS_DIR = path.join(__dirname, '../data/skills');
 const VERSIONS_DIR = path.join(SKILLS_DIR, 'versions');
 fs.mkdirSync(VERSIONS_DIR, { recursive: true });
 
+// Best-effort auto-sync into the authored AGENTS/skills/*.md source (see
+// blueprint.html's Skill Files section). This is a Google Drive path that
+// only exists on Vivian's own Mac — it will simply not be present when this
+// server runs on the Singapore production box, which is fine: every call
+// site below treats a missing/unreachable path as a normal, silent no-op,
+// never as a reason to fail the actual skill save. Deliberately NOT
+// configurable via env var — this is a single-admin convenience, not a
+// feature other deployments need to reason about.
+const AGENTS_SKILLS_DIR = '/Users/user/Library/CloudStorage/GoogleDrive-google@viviankwan.work/Shared drives/DF/DF 創意家居/VIV WIP/Omnichat/omnichat-analyzer-v2/development/AGENTS/skills';
+const SYNC_START = '<!-- SYNC:START -->';
+const SYNC_END = '<!-- SYNC:END -->';
+
+// Rewrites only the block between the SYNC markers in the matching .md file
+// to the new deployed content — everything else in the file (deployment
+// notes, the manually-maintained Notes section) is left untouched. Returns
+// { synced: true } on success, or { synced: false, reason } for any of the
+// several ways this can harmlessly not happen (no Google Drive mount, no
+// matching .md file yet, markers not present in an older/hand-written file).
+function syncAuthoredMarkdown(name, newContent) {
+  const mdPath = path.join(AGENTS_SKILLS_DIR, `${name}-skill.md`);
+  try {
+    if (!fs.existsSync(mdPath)) return { synced: false, reason: 'no matching .md file (or Google Drive not mounted here)' };
+    const mdContent = fs.readFileSync(mdPath, 'utf8');
+    const startIdx = mdContent.indexOf(SYNC_START);
+    const endIdx = mdContent.indexOf(SYNC_END);
+    if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) {
+      return { synced: false, reason: 'SYNC markers not found in .md — add <!-- SYNC:START/END --> around the prompt block to enable auto-sync' };
+    }
+    const before = mdContent.slice(0, startIdx + SYNC_START.length);
+    const after = mdContent.slice(endIdx);
+    fs.writeFileSync(mdPath, `${before}\n${newContent.trim()}\n${after}`, 'utf8');
+    return { synced: true };
+  } catch (e) {
+    return { synced: false, reason: e.message };
+  }
+}
+
 function safeName(raw) {
   return String(raw || '').replace(/[^a-z0-9\-_]/gi, '');
 }
@@ -107,7 +144,12 @@ router.put('/skills/:name', authMiddleware, seniorOnly, (req, res) => {
     }
 
     fs.writeFileSync(filePath, content, 'utf8');
-    res.json({ success: true, message: `Skill "${name}" saved.`, version: history.length + 1 });
+
+    // Best-effort — see syncAuthoredMarkdown()'s own comment for why a
+    // failure/no-op here never blocks or fails the actual skill save above.
+    const mdSync = syncAuthoredMarkdown(name, content);
+
+    res.json({ success: true, message: `Skill "${name}" saved.`, version: history.length + 1, mdSync });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }

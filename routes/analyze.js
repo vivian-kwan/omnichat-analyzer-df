@@ -87,6 +87,26 @@ router.post('/analyze', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/summarize — home tab 對話內容重點, deferred until 查看更多 is
+// first clicked (not run as part of /api/analyze). Split out into its own
+// skill file/call on 2026-09-04 so a rep who only wants tags/labels (the
+// common case) never pays for summary generation at all — /api/analyze used
+// to always generate both together in one call.
+router.post('/summarize', authMiddleware, async (req, res) => {
+  const { provider, apiKey, messages } = req.body;
+  if (!provider || !apiKey || !messages) {
+    return res.status(400).json({ error: 'Missing provider, apiKey, or messages.' });
+  }
+  try {
+    const systemPrompt = loadSkill('conversation-summary');
+    const userMessage = `Messages to analyze:\n${JSON.stringify(messages)}`;
+    const result = await callAI(provider, apiKey, systemPrompt, userMessage);
+    res.json({ success: true, data: result });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // POST /api/deep-analyze — insights tab batch analysis
 router.post('/deep-analyze', authMiddleware, async (req, res) => {
   const { provider, apiKey, chatData } = req.body;

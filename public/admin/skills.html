@@ -163,8 +163,16 @@
   </div>
 
   <div class="announcement-box" id="announcementBox" style="display:none">
-    <h2>Announcement Bar</h2>
+    <div class="editor-top">
+      <h2 style="margin-bottom:0;">Announcement Bar</h2>
+      <button class="link-btn" onclick="downloadAnnouncementExport()" title="Download published announcement as .html" style="margin-left:auto;">⬇ Download</button>
+      <button class="version-pill" id="annVersionToggle" onclick="toggleAnnHistory()">
+        <span id="annVersionPillText">v1</span><span class="chevron">▾</span>
+      </button>
+    </div>
     <p class="hint">Shown at the top of every rep's panel on every fresh load (they can dismiss it for the rest of that session — it comes back next time they reopen the panel). Each CTA opens a popup showing the rich text below it.</p>
+
+    <div class="history" id="annHistoryPanel"></div>
 
     <label>Bar text</label>
     <input type="text" id="annContent" placeholder="此軟件為試用版">
@@ -185,6 +193,7 @@
     </div>
 
     <div class="editor-actions">
+      <input type="text" id="annSaveLabel" placeholder="What changed? (optional, shown in history)">
       <button class="btn-save" onclick="saveAnnouncement()">Save Announcement</button>
     </div>
     <div class="status" id="annStatus"></div>
@@ -204,6 +213,7 @@
   <div class="editor-box" id="editorBox">
     <div class="editor-top">
       <h2>Editing: <span id="editorTitle"></span></h2>
+      <button class="link-btn" onclick="downloadSkillContent()" title="Download current draft as .txt" style="margin-left:auto;">⬇ Download</button>
       <button class="version-pill" id="versionToggle" onclick="toggleHistory()">
         <span id="versionPillText">v1</span><span class="chevron">▾</span>
       </button>
@@ -429,7 +439,16 @@
       });
       const data = await res.json();
       if (data.success) {
-        statusEl.textContent = `✓ Saved as v${data.version}.`;
+        // mdSync reflects whether AGENTS/skills/<name>-skill.md's SYNC-marked
+        // block was auto-updated too — best-effort, only possible when this
+        // server can reach that Google Drive path (i.e. the local dev server
+        // on Vivian's Mac, not production). Surfaced here so a silent no-op
+        // (wrong server, older .md with no markers yet) is visible instead
+        // of just assumed.
+        const syncNote = data.mdSync && data.mdSync.synced
+          ? ' .md source synced.'
+          : data.mdSync ? ` .md not synced (${data.mdSync.reason}).` : '';
+        statusEl.textContent = `✓ Saved as v${data.version}.${syncNote}`;
         statusEl.className = 'status ok';
         document.getElementById('saveLabel').value = '';
         loadVersionSummary();
@@ -606,6 +625,129 @@
     await tinyMceReadyPromise;
     tinymce.get('annCta1Content').setContent(data.data.cta1Content || '');
     tinymce.get('annCta2Content').setContent(data.data.cta2Content || '');
+    loadAnnouncementVersionSummary();
+  }
+
+  // Just the count for the pill label — the full list only renders when the
+  // panel is actually opened. Same split as loadVersionSummary()/
+  // renderHistory() for skills.
+  async function loadAnnouncementVersionSummary() {
+    const res = await apiFetch('/api/announcement/versions');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.success) return;
+    const current = data.versions.find(v => v.current);
+    document.getElementById('annVersionPillText').textContent = current ? `v${current.version}` : 'v1';
+  }
+
+  async function toggleAnnHistory() {
+    const panel = document.getElementById('annHistoryPanel');
+    const pill = document.getElementById('annVersionToggle');
+    const opening = !panel.classList.contains('open');
+    panel.classList.toggle('open', opening);
+    pill.classList.toggle('open', opening);
+    if (opening) await renderAnnHistory();
+  }
+
+  async function renderAnnHistory() {
+    const panel = document.getElementById('annHistoryPanel');
+    panel.innerHTML = '<div class="history-row">Loading…</div>';
+    const res = await apiFetch('/api/announcement/versions');
+    const data = await res.json();
+    if (!data.success) { panel.innerHTML = `<div class="history-row">${data.error || 'Could not load history.'}</div>`; return; }
+
+    panel.innerHTML = data.versions.map(v => {
+      const when = v.timestamp ? new Date(v.timestamp).toLocaleString() : 'now';
+      const who = v.author ? v.author.slice(0, 2).toUpperCase() : '—';
+      const label = v.label || (v.current ? '(live version)' : '(no description)');
+      const sign = v.charDiff > 0 ? '+' : '';
+      const diffClass = v.charDiff >= 0 ? 'add' : 'rem';
+      const diff = `<span class="${diffClass}">${sign}${v.charDiff} chars</span>`;
+      const actions = v.current
+        ? `<span class="badge-current">Live</span>`
+        : `<span class="actions">
+             <button class="link-btn" onclick="previewAnnVersion('${v.id}')">Preview</button>
+             <button class="link-btn" onclick="restoreAnnVersion('${v.id}')">Restore to draft</button>
+           </span>`;
+      return `<div class="history-row${v.current ? ' current' : ''}">
+        <span class="vnum">v${v.version}</span>
+        <span class="who">${who}</span>
+        <span class="summary"><span class="change">${escapeHtml(label)}</span><br><span class="when">${when}</span></span>
+        <span class="diffstat">${diff}</span>
+        ${actions}
+      </div>`;
+    }).join('');
+  }
+
+  // Rich HTML isn't shown in this plain-text alert (Restore to draft loads
+  // it into the actual TinyMCE editors if you need to see it rendered).
+  async function previewAnnVersion(id) {
+    const res = await apiFetch(`/api/announcement/versions/${id}`);
+    const data = await res.json();
+    if (!data.success) { alert(data.error || 'Could not load that version.'); return; }
+    alert(`Version from ${new Date(data.timestamp).toLocaleString()} by ${data.author}:\n\n` +
+      `Bar text: ${data.data.content}\nCTA 1: ${data.data.cta1Text}\nCTA 2: ${data.data.cta2Text}\n\n` +
+      `(Rich content not shown here — use Restore to draft to view/edit it in the editors.)`);
+  }
+
+  async function restoreAnnVersion(id) {
+    const res = await apiFetch(`/api/announcement/versions/${id}`);
+    const data = await res.json();
+    if (!data.success) { alert(data.error || 'Could not load that version.'); return; }
+    if (!confirm('Load this version into the editor as a draft? It will not be saved until you click Save Announcement.')) return;
+    document.getElementById('annContent').value = data.data.content || '';
+    document.getElementById('annCta1Text').value = data.data.cta1Text || '';
+    document.getElementById('annCta2Text').value = data.data.cta2Text || '';
+    await tinyMceReadyPromise;
+    tinymce.get('annCta1Content').setContent(data.data.cta1Content || '');
+    tinymce.get('annCta2Content').setContent(data.data.cta2Content || '');
+    document.getElementById('annSaveLabel').value = `Restored from ${new Date(data.timestamp).toLocaleDateString()} version`;
+    toggleAnnHistory();
+  }
+
+  // Triggers a browser download without needing the chrome.downloads API —
+  // a plain Blob + temporary <a download> click, same technique used for
+  // the extension-side downloads (回覆範本/常見問題範本).
+  function downloadTextFile(filename, text, mimeType) {
+    const blob = new Blob([text], { type: (mimeType || 'text/plain') + ';charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadSkillContent() {
+    if (!currentSkill) return;
+    downloadTextFile(`${currentSkill}.txt`, document.getElementById('editorContent').value);
+  }
+
+  // Standalone .html so images/formatting survive — opens directly in any
+  // browser, unlike a .txt or raw JSON export which would lose both.
+  function buildAnnouncementExportHtml() {
+    const content = document.getElementById('annContent').value;
+    const cta1Text = document.getElementById('annCta1Text').value;
+    const cta2Text = document.getElementById('annCta2Text').value;
+    const cta1Content = tinymce.get('annCta1Content') ? tinymce.get('annCta1Content').getContent() : '';
+    const cta2Content = tinymce.get('annCta2Content') ? tinymce.get('annCta2Content').getContent() : '';
+    return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>${escapeHtml(content)}</title>
+<style>body{font-family:sans-serif;max-width:640px;margin:40px auto;padding:0 20px;line-height:1.6;color:#111;}
+h1{font-size:20px;} h2{font-size:15px;border-bottom:2px solid #FF0000;padding-bottom:6px;margin-top:32px;}</style>
+</head><body>
+<h1>${escapeHtml(content)}</h1>
+<h2>${escapeHtml(cta1Text)}</h2>
+${cta1Content || '<p style="color:#888;">內容尚未設定。</p>'}
+<h2>${escapeHtml(cta2Text)}</h2>
+${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
+</body></html>`;
+  }
+
+  function downloadAnnouncementExport() {
+    downloadTextFile('announcement.html', buildAnnouncementExportHtml(), 'text/html');
   }
 
   async function saveAnnouncement() {
@@ -613,6 +755,7 @@
     await tinyMceReadyPromise;
     const cta1Content = tinymce.get('annCta1Content').getContent();
     const cta2Content = tinymce.get('annCta2Content').getContent();
+    const label = document.getElementById('annSaveLabel').value.trim();
 
     // Size warning — base64-embedded images are what typically blow this up,
     // since they land inline in the HTML rather than as a separate file.
@@ -637,13 +780,16 @@
           cta1Text: document.getElementById('annCta1Text').value,
           cta1Content,
           cta2Text: document.getElementById('annCta2Text').value,
-          cta2Content
+          cta2Content,
+          label
         })
       });
       const data = await res.json();
       if (data.success) {
         statusEl.textContent = '✓ Saved. Reps will see the update next time they (re)open the panel.';
         statusEl.className = 'status ok';
+        document.getElementById('annSaveLabel').value = '';
+        loadAnnouncementVersionSummary();
       } else {
         statusEl.textContent = data.error || 'Save failed.';
         statusEl.className = 'status err';
