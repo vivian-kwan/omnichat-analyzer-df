@@ -8,6 +8,7 @@ const analyzeRouter = require('./routes/analyze');
 const skillsRouter = require('./routes/skills');
 const templatesRouter = require('./routes/templates');
 const customerQuestionsRouter = require('./routes/customer-questions');
+const adSuggestionsRouter = require('./routes/ad-suggestions');
 const announcementRouter = require('./routes/announcement');
 const { authMiddleware } = require('./middleware/auth');
 
@@ -32,6 +33,7 @@ app.use('/api', analyzeRouter);
 app.use('/api', skillsRouter);
 app.use('/api', templatesRouter);
 app.use('/api', customerQuestionsRouter);
+app.use('/api', adSuggestionsRouter);
 app.use('/api', announcementRouter);
 
 // Local-dev-only routes (copy-inventory sync) — only exist at all when
