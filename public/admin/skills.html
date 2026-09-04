@@ -266,10 +266,22 @@
   let currentSkill = '';
   let parsedSamples = [];
 
-  // Allow extension secret to be baked in at deployment time via meta tag or just entered via URL param
+  // Allow the whole login form to be pre-filled via URL params — used by the
+  // extension's own 開啟管理後台 button (see content.js) so opening this page
+  // doesn't need re-typing the server URL/token/secret every time. A plain
+  // visit with no params still lands on the empty login form as before.
   const params = new URLSearchParams(location.search);
   if (params.get('secret')) {
     SECRET = params.get('secret');
+  }
+  if (params.get('serverUrl')) {
+    document.getElementById('serverUrl').value = params.get('serverUrl');
+  }
+  if (params.get('token')) {
+    document.getElementById('tokenInput').value = params.get('token');
+  }
+  if (params.get('serverUrl') && params.get('token') && SECRET) {
+    login();
   }
 
   async function apiFetch(path, opts = {}) {
