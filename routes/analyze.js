@@ -93,13 +93,18 @@ router.post('/analyze', authMiddleware, async (req, res) => {
 // common case) never pays for summary generation at all — /api/analyze used
 // to always generate both together in one call.
 router.post('/summarize', authMiddleware, async (req, res) => {
-  const { provider, apiKey, messages } = req.body;
+  const { provider, apiKey, messages, latestStage } = req.body;
   if (!provider || !apiKey || !messages) {
     return res.status(400).json({ error: 'Missing provider, apiKey, or messages.' });
   }
   try {
     const systemPrompt = loadSkill('conversation-summary');
-    const userMessage = `Messages to analyze:\n${JSON.stringify(messages)}`;
+    // latestStage is the REAL stage classification already determined (see
+    // getLatestStage() in content.js) — passed explicitly so the summary's
+    // 回覆頻率 skip-decision is grounded in that, not a second, independent
+    // (and potentially disagreeing) guess made by this separate call, which
+    // only ever sees the raw messages otherwise.
+    const userMessage = `Messages to analyze:\n${JSON.stringify(messages)}\n\nLatest stage (most recent brand message's real stage, from classification — use this, do not re-derive the stage yourself): ${latestStage || 'none yet — no brand message has a real stage'}`;
     const result = await callAI(provider, apiKey, systemPrompt, userMessage);
     res.json({ success: true, data: result });
   } catch (e) {
