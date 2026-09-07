@@ -1,9 +1,10 @@
 // routes/ad-suggestions.js — 廣告素材追問建議: a static reference list mapping
 // an ad creative's name to a suggested follow-up question for reps to use
-// once a customer from that ad reaches 邀請報價. Senior/admin only end to
-// end (same as skills.js) — managed entirely via public/admin/skills.html,
-// not exposed anywhere in the extension itself. Purely a manual lookup
-// list — not matched against scraped chat data anywhere.
+// once a customer from that ad reaches 邀請報價. Same split as
+// routes/announcement.js: GET is open to any authenticated user (the
+// extension's runSuggestFollowup() reads it to match against the chat's
+// scraped Ad ID stub name), writes are senior/admin only — managed via
+// public/admin/skills.html, never added/edited from within the extension.
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -25,8 +26,9 @@ function saveSuggestions(suggestions) {
   fs.writeFileSync(SUGGESTIONS_PATH, JSON.stringify(suggestions, null, 2), 'utf8');
 }
 
-// GET /api/ad-suggestions — sorted newest-created first.
-router.get('/ad-suggestions', authMiddleware, seniorOnly, (req, res) => {
+// GET /api/ad-suggestions — sorted newest-created first. Open to any
+// authenticated user (read-only) — see file header.
+router.get('/ad-suggestions', authMiddleware, (req, res) => {
   const suggestions = loadSuggestions();
   const sorted = [...suggestions].sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
   res.json({ success: true, data: sorted });
