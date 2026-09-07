@@ -2,3 +2,15 @@ node_modules/
 .env
 *.log
 .DS_Store
+
+# Runtime-written data files — mutated live via the app's own API routes
+# (fs.writeFileSync), not edited through git. Tracking these meant every
+# Cloudways "Deployment via GIT" pull reset/deleted live production data
+# back to whatever was last committed (usually an empty seed value),
+# silently wiping anything added since. See routes/ad-suggestions.js,
+# routes/announcement.js, routes/customer-questions.js, routes/templates.js.
+data/ad-suggestions.json
+data/announcement.json
+data/announcement-versions.json
+data/customer-questions.json
+data/templates.json
