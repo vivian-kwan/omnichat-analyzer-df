@@ -28,6 +28,9 @@ function authMiddleware(req, res, next) {
   if (!user) {
     return res.status(403).json({ error: 'Unrecognised token. Ask your admin to add you.' });
   }
+  if (user.disabled) {
+    return res.status(403).json({ error: '此帳戶已被停用，請聯絡管理員。' });
+  }
 
   // token itself is attached (not just name/role) so routes can do their own
   // per-resource ownership checks (e.g. "did this user create this
@@ -46,4 +49,15 @@ function seniorOnly(req, res, next) {
   next();
 }
 
-module.exports = { authMiddleware, seniorOnly, getUsers };
+// Stricter than seniorOnly — admin is not a superset gate here, it's the
+// only tier allowed. User management controls who can log in at all
+// (including who else is senior/admin), so it doesn't inherit senior's
+// access the way most other admin-only features do.
+function adminOnly(req, res, next) {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'This action requires admin access.' });
+  }
+  next();
+}
+
+module.exports = { authMiddleware, seniorOnly, adminOnly, getUsers };

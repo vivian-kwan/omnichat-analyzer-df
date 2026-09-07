@@ -14,3 +14,10 @@ data/announcement.json
 data/announcement-versions.json
 data/customer-questions.json
 data/templates.json
+# users.json joined this list once routes/users.js started writing to it —
+# it gates login itself, so see the deploy callout in the plan/handover
+# notes before untracking it in production: back up data/users.json via
+# SSH (cp data/users.json data/users.json.bak) BEFORE that specific
+# deploy, since a mid-deploy wipe here can't be self-healed through the
+# API (no valid token would authenticate the fix).
+data/users.json

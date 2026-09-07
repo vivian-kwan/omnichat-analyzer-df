@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Skill Editor — Omnichat Analyzer</title>
+  <title>管理後台 — Omnichat Analyzer</title>
   <!-- Loaded from jsDelivr (plain npm package mirror), not cdn.tiny.cloud —
        avoids Tiny's own "Cloud" service, which requires a free API key/
        account and shows a nag/watermark without one. Same open-source
@@ -23,7 +23,14 @@
       background: var(--brand); color: #fff; font-size: 10px; font-weight: 600; text-transform: uppercase;
       letter-spacing: .05em; padding: 3px 9px; border-radius: 10px; font-family: 'IBM Plex Mono', monospace;
     }
-    .container { max-width: 900px; margin: 32px auto; padding: 0 16px; }
+    .container { max-width: 1100px; margin: 32px auto; padding: 0 16px; }
+    .admin-nav { display: none; justify-content: flex-end; gap: 20px; margin-bottom: 24px; }
+    .admin-nav-link { color: var(--text); font-weight: 600; font-size: 14px; cursor: pointer; }
+    .admin-nav-link.active { color: var(--brand); text-decoration: underline; text-underline-offset: 4px; }
+    .editor-placeholder {
+      flex: 1; min-width: 0; background: #fff; border: 1px dashed var(--border); border-radius: 8px;
+      padding: 40px 20px; text-align: center; color: var(--text3); font-size: 13px;
+    }
     .auth-box { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 24px; }
     .auth-box h2 { font-size: 13px; margin-bottom: 14px; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
     .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -133,7 +140,7 @@
     .announcement-box .hint { font-size: 12px; color: var(--text3); margin-bottom: 14px; }
     .announcement-box label { display: block; font-size: 11.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; margin: 14px 0 6px; }
     .announcement-box label:first-of-type { margin-top: 0; }
-    .cta-columns { display: flex; gap: 20px; flex-wrap: wrap; }
+    .cta-columns { display: flex; flex-direction: column; gap: 20px; flex-wrap: wrap; }
     .cta-columns > div { flex: 1; min-width: 280px; }
     .ad-sug-row {
       display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
@@ -145,170 +152,238 @@
     .ad-sug-row .who { font-size: 11px; color: var(--text3); margin-top: 8px; }
     .ad-sug-row .actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
     .ad-sug-empty { font-size: 12.5px; color: var(--text3); padding: 4px 0 14px; }
+    .users-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .users-table th { text-align: left; padding: 10px 12px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text3); font-weight: 700; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .users-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .users-table tr:last-child td { border-bottom: none; }
+    .token-cell { display: flex; align-items: center; gap: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--text2); }
+    .badge-disabled {
+      font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--brand); background: #fff0ee; padding: 2px 7px; border-radius: 999px;
+    }
   </style>
 </head>
 <body>
 
 <header>
   <h1>Omnichat Analyzer</h1>
-  <span class="badge">Skill Editor</span>
+  <span class="badge">管理後台</span>
   <span style="margin-left:auto; font-size:13px; opacity:.7;" id="userLabel"></span>
 </header>
 
 <div class="container">
 
   <div class="auth-box" id="authBox">
-    <h2>Sign in (Senior access required)</h2>
+    <h2>登入（需要資深或以上權限）</h2>
     <div class="row">
-      <input type="text" id="serverUrl" placeholder="Server URL  e.g. https://yourserver.com" />
-      <input type="text" id="tokenInput" placeholder="Your token" />
-      <button class="btn-primary" onclick="login()">Connect</button>
+      <input type="text" id="tokenInput" placeholder="你嘅 Token" />
+      <button class="btn-primary" onclick="login()">連接</button>
     </div>
     <div id="authStatus"></div>
   </div>
 
-  <div class="skill-list" id="skillListBox" style="display:none">
-    <h2>Available Skills</h2>
-    <div id="skillCards"></div>
+  <div class="admin-nav" id="adminNav">
+    <span class="admin-nav-link active" data-tab="skills" onclick="switchAdminTab('skills')">AI提示詞設置</span>
+    <span class="admin-nav-link" data-tab="ads" onclick="switchAdminTab('ads')">廣告建議提問</span>
+    <span class="admin-nav-link" data-tab="announcement" onclick="switchAdminTab('announcement')">公告及介面內容更新</span>
+    <span class="admin-nav-link" data-tab="users" id="usersNavLink" onclick="switchAdminTab('users')" style="display:none;">用戶管理</span>
   </div>
 
-  <div class="announcement-box" id="announcementBox" style="display:none">
-    <div class="editor-top">
-      <h2 style="margin-bottom:0;">Announcement Bar</h2>
-      <button class="link-btn" onclick="downloadAnnouncementExport()" title="Download published announcement as .html" style="margin-left:auto;">⬇ Download</button>
-      <button class="version-pill" id="annVersionToggle" onclick="toggleAnnHistory()">
-        <span id="annVersionPillText">v1</span><span class="chevron">▾</span>
-      </button>
-    </div>
-    <p class="hint">Shown at the top of every rep's panel on every fresh load (they can dismiss it for the rest of that session — it comes back next time they reopen the panel). Each CTA opens a popup showing the rich text below it.</p>
-
-    <div class="history" id="annHistoryPanel"></div>
-
-    <label>Bar text</label>
-    <input type="text" id="annContent" placeholder="此軟件為試用版">
-
-    <div class="cta-columns" style="margin-top:16px;">
-      <div>
-        <label>CTA 1 label</label>
-        <input type="text" id="annCta1Text" placeholder="使用手冊">
-        <label>CTA 1 popup content</label>
-        <textarea id="annCta1Content"></textarea>
+  <div class="tab-panel" id="tabPanel-skills">
+    <div style="display:flex; gap:20px; align-items:flex-start;">
+      <div class="skill-list" id="skillListBox" style="display:none; flex:0 0 260px;">
+        <h2>可用嘅 Skill Prompts</h2>
+        <div id="skillCards"></div>
       </div>
-      <div>
-        <label>CTA 2 label</label>
-        <input type="text" id="annCta2Text" placeholder="每月KPI">
-        <label>CTA 2 popup content</label>
-        <textarea id="annCta2Content"></textarea>
+
+      <div id="editorPlaceholder" class="editor-placeholder" style="display:none;">← 請先喺左邊揀一個 skill 開始編輯</div>
+
+      <div class="editor-box" id="editorBox" style="flex:1; min-width:0;">
+        <div class="editor-top">
+          <h2>編輯緊：<span id="editorTitle"></span></h2>
+          <button class="link-btn" onclick="downloadSkillContent()" title="下載目前草稿為 .txt" style="margin-left:auto;">⬇ 下載</button>
+          <button class="version-pill" id="versionToggle" onclick="toggleHistory()">
+            <span id="versionPillText">v1</span><span class="chevron">▾</span>
+          </button>
+        </div>
+
+        <div class="history" id="historyPanel"></div>
+
+        <textarea id="editorContent"></textarea>
+
+        <div class="test-zone">
+          <h3>測試呢個草稿</h3>
+          <p class="hint">用返上面（未儲存）嘅文字對樣本對話進行測試。呢度嘅操作唔會影響現行嘅 skill 檔案或版本記錄。</p>
+
+          <div class="creds-row">
+            <select id="testProvider">
+              <option value="openai">ChatGPT</option>
+              <option value="gemini">Gemini</option>
+              <option value="deepseek">DeepSeek</option>
+            </select>
+            <input type="password" id="testApiKey" placeholder="已選供應商嘅 API key" />
+          </div>
+
+          <label style="font-size:11.5px; color:var(--text3); display:block; margin-bottom:4px;">
+            Paste a 下載對話 CSV export (客戶總覽 → 下載 CSV)
+          </label>
+          <textarea class="csv-paste" id="csvPaste" placeholder="Chat,Contact,Sender,Message,IsAd&#10;1,Billy Shum,Customer,..."></textarea>
+          <div class="csv-status" id="csvStatus">未有載入樣本資料</div>
+
+          <div class="run-row">
+            <button class="btn-structure" id="btnRunTest" onclick="runSampleTest()" disabled>執行樣本測試</button>
+          </div>
+
+          <div class="sample-strip" id="sampleResults"></div>
+        </div>
+
+        <div class="editor-actions">
+          <input type="text" id="saveLabel" placeholder="有咩改咗？（選填，會顯示喺歷史記錄）" />
+          <button class="btn-save" onclick="saveSkill()">儲存新版本</button>
+          <button class="btn-cancel" onclick="closeEditor()">取消</button>
+        </div>
+        <div class="status" id="saveStatus"></div>
       </div>
     </div>
-
-    <div class="editor-actions">
-      <input type="text" id="annSaveLabel" placeholder="What changed? (optional, shown in history)">
-      <button class="btn-save" onclick="saveAnnouncement()">Save Announcement</button>
-    </div>
-    <div class="status" id="annStatus"></div>
   </div>
 
-  <div class="announcement-box" id="adSuggestionsBox" style="display:none">
-    <h2>廣告素材追問建議</h2>
-    <p class="hint">對應廣告素材名稱同建議追問問題嘅參考清單，供 reps 喺邀請報價階段人手參考。純手動清單，不會與已擷取嘅對話資料自動比對。</p>
+  <div class="tab-panel" id="tabPanel-ads" style="display:none">
+    <div class="announcement-box" id="adSuggestionsBox" style="display:none">
+      <h2>廣告素材追問建議</h2>
+      <p class="hint">對應廣告素材名稱同建議追問問題嘅參考清單，供 reps 喺邀請報價階段人手參考。純手動清單，不會與已擷取嘅對話資料自動比對。</p>
 
-    <div id="adSuggestionsList"></div>
+      <div id="adSuggestionsList"></div>
 
-    <label>廣告素材名稱</label>
-    <input type="text" id="adSugName" placeholder="例：透明窗花_9月">
-    <label>建議追問問題</label>
-    <textarea id="adSugQuestion" style="height:80px;" placeholder="請問您想咗解嘅係邊個單位嘅透明窗花呢？"></textarea>
+      <label>廣告素材名稱</label>
+      <input type="text" id="adSugName" placeholder="例：透明窗花_9月">
+      <label>建議追問問題</label>
+      <textarea id="adSugQuestion" style="height:80px;" placeholder="請問您想咗解嘅係邊個單位嘅透明窗花呢？"></textarea>
 
-    <div class="editor-actions">
-      <button class="btn-save" id="btnSaveAdSuggestion" onclick="saveAdSuggestion()">儲存建議</button>
-      <button class="btn-cancel" id="btnCancelAdSuggestion" onclick="cancelAdSuggestionEdit()" style="display:none;">Cancel</button>
+      <div class="editor-actions">
+        <button class="btn-save" id="btnSaveAdSuggestion" onclick="saveAdSuggestion()">儲存建議</button>
+        <button class="btn-cancel" id="btnCancelAdSuggestion" onclick="cancelAdSuggestionEdit()" style="display:none;">取消</button>
+      </div>
+      <div class="status" id="adSugStatus"></div>
     </div>
-    <div class="status" id="adSugStatus"></div>
   </div>
 
-  <div class="sync-box" id="syncBox" style="display:none">
-    <h2>Sync Copy from Spreadsheet</h2>
-    <p class="hint">Reads docs/omnichat-copy-inventory.xlsx and writes matching text/class changes into content.js and skills.html. Local dev server only — Preview first.</p>
-    <div class="row">
-      <button class="btn-secondary" id="btnPreviewSync" onclick="runSync(false)">Preview Sync (dry run)</button>
-      <button class="btn-primary" id="btnApplySync" onclick="runSync(true)" disabled>Apply Sync</button>
+  <div class="tab-panel" id="tabPanel-announcement" style="display:none">
+    <div class="announcement-box" id="announcementBox" style="display:none">
+      <div class="editor-top">
+        <h2 style="margin-bottom:0;">公告列</h2>
+        <button class="link-btn" onclick="downloadAnnouncementExport()" title="下載已發布嘅公告為 .html" style="margin-left:auto;">⬇ 下載</button>
+        <button class="version-pill" id="annVersionToggle" onclick="toggleAnnHistory()">
+          <span id="annVersionPillText">v1</span><span class="chevron">▾</span>
+        </button>
+      </div>
+      <p class="hint">每次 rep 重新打開面板時都會喺頂部顯示（佢哋可以喺嗰個 session 內關閉，下次重開面板會再出現）。每個 CTA 會彈出視窗顯示下面嘅內容。</p>
+
+      <div class="history" id="annHistoryPanel"></div>
+
+      <label>公告列文字</label>
+      <input type="text" id="annContent" placeholder="此軟件為試用版">
+
+      <div class="cta-columns" style="margin-top:16px;">
+        <div>
+          <label>CTA 1 標籤</label>
+          <input type="text" id="annCta1Text" placeholder="使用手冊">
+          <label>CTA 1 彈出視窗內容</label>
+          <textarea id="annCta1Content"></textarea>
+        </div>
+        <div>
+          <label>CTA 2 標籤</label>
+          <input type="text" id="annCta2Text" placeholder="每月KPI">
+          <label>CTA 2 彈出視窗內容</label>
+          <textarea id="annCta2Content"></textarea>
+        </div>
+      </div>
+
+      <div class="editor-actions">
+        <input type="text" id="annSaveLabel" placeholder="有咩改咗？（選填，會顯示喺歷史記錄）">
+        <button class="btn-save" onclick="saveAnnouncement()">儲存公告</button>
+      </div>
+      <div class="status" id="annStatus"></div>
     </div>
-    <pre class="sync-output" id="syncOutput"></pre>
-    <div class="status" id="syncStatus"></div>
+
+    <div class="sync-box" id="syncBox" style="display:none">
+      <h2>從試算表同步文案</h2>
+      <p class="hint">讀取 docs/omnichat-copy-inventory.xlsx，並將對應嘅文字/class 改動寫入 content.js 同 skills.html。只限本機 dev server 使用 — 請先預覽。</p>
+      <div class="row">
+        <button class="btn-secondary" id="btnPreviewSync" onclick="runSync(false)">預覽同步（試跑）</button>
+        <button class="btn-primary" id="btnApplySync" onclick="runSync(true)" disabled>套用同步</button>
+      </div>
+      <pre class="sync-output" id="syncOutput"></pre>
+      <div class="status" id="syncStatus"></div>
+    </div>
   </div>
 
-  <div class="editor-box" id="editorBox">
-    <div class="editor-top">
-      <h2>Editing: <span id="editorTitle"></span></h2>
-      <button class="link-btn" onclick="downloadSkillContent()" title="Download current draft as .txt" style="margin-left:auto;">⬇ Download</button>
-      <button class="version-pill" id="versionToggle" onclick="toggleHistory()">
-        <span id="versionPillText">v1</span><span class="chevron">▾</span>
-      </button>
-    </div>
+  <div class="tab-panel" id="tabPanel-users" style="display:none">
+    <div class="announcement-box" id="usersBox">
+      <h2>用戶列表</h2>
+      <p class="hint">管理可以登入呢個工具嘅用戶帳戶。停用一個帳戶會即刻攞返佢嘅存取權限，但唔會刪除佢喺系統入面留低嘅任何記錄（例如已加嘅範本或建議）。</p>
 
-    <div class="history" id="historyPanel"></div>
+      <div style="overflow-x:auto;">
+        <table class="users-table">
+          <thead>
+            <tr><th>姓名</th><th>Token</th><th>角色</th><th>狀態</th><th>操作</th></tr>
+          </thead>
+          <tbody id="usersTableBody"></tbody>
+        </table>
+      </div>
 
-    <textarea id="editorContent"></textarea>
-
-    <div class="test-zone">
-      <h3>Test this draft</h3>
-      <p class="hint">Runs the text above (unsaved) against sample conversations. Nothing here touches the live skill file or version history.</p>
-
-      <div class="creds-row">
-        <select id="testProvider">
-          <option value="openai">ChatGPT</option>
-          <option value="gemini">Gemini</option>
-          <option value="deepseek">DeepSeek</option>
+      <div style="margin-top:20px; padding-top:20px; border-top:1px solid var(--border);">
+        <label>姓名</label>
+        <input type="text" id="userName" placeholder="例：Ka Yan">
+        <label>角色</label>
+        <select id="userRole">
+          <option value="standard">一般</option>
+          <option value="senior">資深</option>
+          <option value="admin">管理員</option>
         </select>
-        <input type="password" id="testApiKey" placeholder="API key for the selected provider" />
+        <div class="editor-actions">
+          <button class="btn-save" id="btnSaveUser" onclick="saveUser()">新增用戶</button>
+          <button class="btn-cancel" id="btnCancelUser" onclick="cancelUserEdit()" style="display:none;">取消</button>
+        </div>
+        <div class="status" id="userStatus"></div>
       </div>
-
-      <label style="font-size:11.5px; color:var(--text3); display:block; margin-bottom:4px;">
-        Paste a 下載對話 CSV export (客戶總覽 → 下載 CSV)
-      </label>
-      <textarea class="csv-paste" id="csvPaste" placeholder="Chat,Contact,Sender,Message,IsAd&#10;1,Billy Shum,Customer,..."></textarea>
-      <div class="csv-status" id="csvStatus">No sample data loaded yet.</div>
-
-      <div class="run-row">
-        <button class="btn-structure" id="btnRunTest" onclick="runSampleTest()" disabled>Run Sample Test</button>
-      </div>
-
-      <div class="sample-strip" id="sampleResults"></div>
     </div>
-
-    <div class="editor-actions">
-      <input type="text" id="saveLabel" placeholder="What changed? (optional, shown in history)" />
-      <button class="btn-save" onclick="saveSkill()">Save New Version</button>
-      <button class="btn-cancel" onclick="closeEditor()">Cancel</button>
-    </div>
-    <div class="status" id="saveStatus"></div>
   </div>
 
 </div>
 
 <script>
-  let BASE_URL = '';
+  // Same split as the extension's own background.js (LOCAL_SERVER_BASE/
+  // PROD_SERVER_BASE) — auto-picked from this page's own hostname so the
+  // login form no longer needs a manual server-URL field. A ?serverUrl=
+  // param (still accepted below) overrides this, for the odd case a
+  // non-standard server is actually being used.
+  const LOCAL_SERVER_BASE = 'http://localhost:3000';
+  const PROD_SERVER_BASE = 'https://api.df-creativehome.com/proxy.php?route=';
+  const AUTO_SERVER_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? LOCAL_SERVER_BASE
+    : PROD_SERVER_BASE;
+
+  let BASE_URL = AUTO_SERVER_BASE;
   let TOKEN = '';
   let SECRET = '';
   let currentSkill = '';
   let parsedSamples = [];
 
-  // Allow the whole login form to be pre-filled via URL params — used by the
+  // Allow the login form to be pre-filled via URL params — used by the
   // extension's own 開啟管理後台 button (see content.js) so opening this page
-  // doesn't need re-typing the server URL/token/secret every time. A plain
-  // visit with no params still lands on the empty login form as before.
+  // doesn't need re-typing the token/secret every time. A plain visit with
+  // no params still lands on the empty login form as before.
   const params = new URLSearchParams(location.search);
   if (params.get('secret')) {
     SECRET = params.get('secret');
   }
   if (params.get('serverUrl')) {
-    document.getElementById('serverUrl').value = params.get('serverUrl');
+    BASE_URL = params.get('serverUrl');
   }
   if (params.get('token')) {
     document.getElementById('tokenInput').value = params.get('token');
   }
-  if (params.get('serverUrl') && params.get('token') && SECRET) {
+  if (params.get('token') && SECRET) {
     login();
   }
 
@@ -324,54 +399,76 @@
   }
 
   async function login() {
-    const urlInput = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
     TOKEN = document.getElementById('tokenInput').value.trim();
     const statusEl = document.getElementById('authStatus');
 
-    if (!urlInput || !TOKEN) {
-      statusEl.textContent = 'Please enter both server URL and token.';
+    if (!TOKEN) {
+      statusEl.textContent = '請輸入你嘅 Token。';
       statusEl.className = 'err';
       return;
     }
 
     // Prompt for extension secret if not in URL params
     if (!SECRET) {
-      SECRET = prompt('Enter extension secret (ask your admin):') || '';
+      SECRET = prompt('輸入 extension secret（請向管理員查詢）：') || '';
     }
 
-    BASE_URL = urlInput;
-    statusEl.textContent = 'Connecting…';
+    statusEl.textContent = '連接緊…';
     statusEl.className = '';
 
     try {
       const res = await apiFetch('/api/skills');
       if (res.status === 403) {
-        statusEl.textContent = 'Access denied — senior role required.';
+        statusEl.textContent = '拒絕存取 — 需要資深權限。';
         statusEl.className = 'err';
         return;
       }
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        statusEl.textContent = d.error || `Error ${res.status}`;
+        statusEl.textContent = d.error || `錯誤 ${res.status}`;
         statusEl.className = 'err';
         return;
       }
       const data = await res.json();
       statusEl.textContent = '';
       document.getElementById('authBox').style.display = 'none';
+      document.getElementById('adminNav').style.display = 'flex';
       document.getElementById('skillListBox').style.display = 'block';
+      document.getElementById('editorPlaceholder').style.display = 'block';
       document.getElementById('announcementBox').style.display = 'block';
       document.getElementById('adSuggestionsBox').style.display = 'block';
       document.getElementById('syncBox').style.display = 'block';
-      document.getElementById('userLabel').textContent = `Connected to ${BASE_URL}`;
+      document.getElementById('userLabel').textContent = `已連接至 ${BASE_URL}`;
       renderSkills(data.skills);
       restoreTestCreds();
       loadAnnouncementEditor();
       loadAdSuggestions();
+
+      // 用戶管理 tab only for admin — mirrors the server-side adminOnly gate
+      // on routes/users.js, not just a UI nicety (senior gets a 403 either
+      // way if they somehow call the API directly).
+      const meRes = await apiFetch('/api/me');
+      if (meRes.ok) {
+        const me = await meRes.json();
+        if (me.success && me.data.role === 'admin') {
+          document.getElementById('usersNavLink').style.display = 'inline';
+          loadUsers();
+        }
+      }
     } catch (e) {
-      statusEl.textContent = 'Could not reach server. Check URL and try again.';
+      statusEl.textContent = '連接唔到伺服器，請檢查網址後再試。';
       statusEl.className = 'err';
     }
+  }
+
+  // ---- Tab nav ----
+  function switchAdminTab(name) {
+    document.querySelectorAll('.tab-panel').forEach(p => {
+      p.style.display = p.id === `tabPanel-${name}` ? 'block' : 'none';
+    });
+    document.querySelectorAll('.admin-nav-link').forEach(link => {
+      link.classList.toggle('active', link.dataset.tab === name);
+    });
   }
 
   function renderSkills(skills) {
@@ -381,7 +478,7 @@
       const card = document.createElement('div');
       card.className = 'skill-card';
       card.dataset.name = name;
-      card.innerHTML = `<span class="skill-name">${name}</span><span class="skill-hint">Click to edit</span>`;
+      card.innerHTML = `<span class="skill-name">${name}</span><span class="skill-hint">點擊以編輯</span>`;
       card.onclick = () => openSkill(name);
       container.appendChild(card);
     });
@@ -400,6 +497,7 @@
     document.getElementById('historyPanel').classList.remove('open');
     document.getElementById('versionToggle').classList.remove('open');
     document.getElementById('editorBox').classList.add('visible');
+    document.getElementById('editorPlaceholder').style.display = 'none';
     loadVersionSummary();
   }
 
@@ -425,21 +523,21 @@
 
   async function renderHistory() {
     const panel = document.getElementById('historyPanel');
-    panel.innerHTML = '<div class="history-row">Loading…</div>';
+    panel.innerHTML = '<div class="history-row">載入緊…</div>';
     const res = await apiFetch(`/api/skills/${currentSkill}/versions`);
     const data = await res.json();
-    if (!data.success) { panel.innerHTML = `<div class="history-row">${data.error || 'Could not load history.'}</div>`; return; }
+    if (!data.success) { panel.innerHTML = `<div class="history-row">${data.error || '無法載入歷史記錄。'}</div>`; return; }
 
     panel.innerHTML = data.versions.map(v => {
-      const when = v.timestamp ? new Date(v.timestamp).toLocaleString() : 'now';
+      const when = v.timestamp ? new Date(v.timestamp).toLocaleString() : '而家';
       const who = v.author ? v.author.slice(0, 2).toUpperCase() : '—';
-      const label = v.label || (v.current ? '(live version)' : '(no description)');
+      const label = v.label || (v.current ? '（現正使用嘅版本）' : '（沒有描述）');
       const diff = `<span class="add">+${v.diffAdded}</span> <span class="rem">−${v.diffRemoved}</span>`;
       const actions = v.current
-        ? `<span class="badge-current">Live</span>`
+        ? `<span class="badge-current">使用中</span>`
         : `<span class="actions">
-             <button class="link-btn" onclick="previewVersion('${v.id}')">Preview</button>
-             <button class="link-btn" onclick="restoreVersion('${v.id}')">Restore to draft</button>
+             <button class="link-btn" onclick="previewVersion('${v.id}')">預覽</button>
+             <button class="link-btn" onclick="restoreVersion('${v.id}')">還原為草稿</button>
            </span>`;
       return `<div class="history-row${v.current ? ' current' : ''}">
         <span class="vnum">v${v.version}</span>
@@ -454,17 +552,17 @@
   async function previewVersion(id) {
     const res = await apiFetch(`/api/skills/${currentSkill}/versions/${id}`);
     const data = await res.json();
-    if (!data.success) { alert(data.error || 'Could not load that version.'); return; }
-    alert(`Version from ${new Date(data.timestamp).toLocaleString()} by ${data.author}:\n\n${data.content}`);
+    if (!data.success) { alert(data.error || '無法載入嗰個版本。'); return; }
+    alert(`版本來自 ${new Date(data.timestamp).toLocaleString()}，由 ${data.author} 建立：\n\n${data.content}`);
   }
 
   async function restoreVersion(id) {
     const res = await apiFetch(`/api/skills/${currentSkill}/versions/${id}`);
     const data = await res.json();
-    if (!data.success) { alert(data.error || 'Could not load that version.'); return; }
-    if (!confirm('Load this version into the editor as a draft? It will not be saved until you click Save New Version.')) return;
+    if (!data.success) { alert(data.error || '無法載入嗰個版本。'); return; }
+    if (!confirm('要將呢個版本載入編輯器作為草稿嗎？喺你按「儲存新版本」之前都唔會儲存。')) return;
     document.getElementById('editorContent').value = data.content;
-    document.getElementById('saveLabel').value = `Restored from ${new Date(data.timestamp).toLocaleDateString()} version`;
+    document.getElementById('saveLabel').value = `已還原自 ${new Date(data.timestamp).toLocaleDateString()} 嘅版本`;
     toggleHistory();
   }
 
@@ -472,7 +570,7 @@
     const content = document.getElementById('editorContent').value;
     const label = document.getElementById('saveLabel').value.trim();
     const statusEl = document.getElementById('saveStatus');
-    statusEl.textContent = 'Saving…';
+    statusEl.textContent = '儲存緊…';
     statusEl.className = 'status';
     try {
       const res = await apiFetch(`/api/skills/${currentSkill}`, {
@@ -488,24 +586,25 @@
         // (wrong server, older .md with no markers yet) is visible instead
         // of just assumed.
         const syncNote = data.mdSync && data.mdSync.synced
-          ? ' .md source synced.'
-          : data.mdSync ? ` .md not synced (${data.mdSync.reason}).` : '';
-        statusEl.textContent = `✓ Saved as v${data.version}.${syncNote}`;
+          ? '（.md 來源已同步）'
+          : data.mdSync ? `（.md 未同步：${data.mdSync.reason}）` : '';
+        statusEl.textContent = `✓ 已儲存為 v${data.version}。${syncNote}`;
         statusEl.className = 'status ok';
         document.getElementById('saveLabel').value = '';
         loadVersionSummary();
       } else {
-        statusEl.textContent = data.error || 'Save failed.';
+        statusEl.textContent = data.error || '儲存失敗。';
         statusEl.className = 'status err';
       }
     } catch (e) {
-      statusEl.textContent = 'Network error.';
+      statusEl.textContent = '網絡錯誤。';
       statusEl.className = 'status err';
     }
   }
 
   function closeEditor() {
     document.getElementById('editorBox').classList.remove('visible');
+    document.getElementById('editorPlaceholder').style.display = 'block';
     document.querySelectorAll('.skill-card').forEach(c => c.classList.remove('active'));
     currentSkill = '';
   }
@@ -583,11 +682,11 @@
     const statusEl = document.getElementById('csvStatus');
     const runBtn = document.getElementById('btnRunTest');
     if (parsedSamples.length > 0) {
-      statusEl.textContent = `✓ ${parsedSamples.length} conversation(s) ready to test.`;
+      statusEl.textContent = `✓ 已準備好 ${parsedSamples.length} 個對話可供測試。`;
       statusEl.className = 'csv-status ready';
       runBtn.disabled = false;
     } else {
-      statusEl.textContent = e.target.value.trim() ? 'Could not find any conversations in that paste — check it\'s a 下載對話 CSV export.' : 'No sample data loaded yet.';
+      statusEl.textContent = e.target.value.trim() ? '喺貼上嘅內容裡搵唔到任何對話 — 請確認係下載對話 CSV export。' : '未有載入樣本資料';
       statusEl.className = 'csv-status';
       runBtn.disabled = true;
     }
@@ -600,10 +699,10 @@
     const runBtn = document.getElementById('btnRunTest');
     const resultsEl = document.getElementById('sampleResults');
 
-    if (!apiKey) { alert('Enter an API key for the selected provider first.'); return; }
-    if (!parsedSamples.length) { alert('Paste a 下載對話 CSV export first.'); return; }
+    if (!apiKey) { alert('請先輸入已選供應商嘅 API key。'); return; }
+    if (!parsedSamples.length) { alert('請先貼上一個下載對話 CSV export。'); return; }
 
-    runBtn.disabled = true; runBtn.textContent = 'Running…';
+    runBtn.disabled = true; runBtn.textContent = '執行緊…';
     resultsEl.innerHTML = '';
     try {
       const res = await apiFetch(`/api/skills/${currentSkill}/test`, {
@@ -611,12 +710,12 @@
         body: JSON.stringify({ content, provider, apiKey, samples: parsedSamples })
       });
       const data = await res.json();
-      if (!data.success) { alert(data.error || 'Test run failed.'); return; }
+      if (!data.success) { alert(data.error || '測試執行失敗。'); return; }
       resultsEl.innerHTML = data.results.map(r => renderSampleCard(r)).join('');
     } catch (e) {
-      alert('Network error running the sample test.');
+      alert('執行樣本測試時發生網絡錯誤。');
     } finally {
-      runBtn.disabled = false; runBtn.textContent = 'Run Sample Test';
+      runBtn.disabled = false; runBtn.textContent = '執行樣本測試';
     }
   }
 
@@ -627,7 +726,7 @@
     let parsed = null;
     try { parsed = JSON.parse(String(r.raw).replace(/```json/g, '').replace(/```/g, '').trim()); } catch (e) { /* not JSON — show raw below */ }
     if (parsed && (parsed.summary || parsed.total_price)) {
-      const price = parsed.total_price ? `<div class="price">Price: ${escapeHtml(String(parsed.total_price))}</div>` : '';
+      const price = parsed.total_price ? `<div class="price">報價：${escapeHtml(String(parsed.total_price))}</div>` : '';
       return `<div class="sample-card"><div class="contact">${escapeHtml(r.name)}</div><div class="body">${escapeHtml(parsed.summary || '')}</div>${price}</div>`;
     }
     return `<div class="sample-card"><div class="contact">${escapeHtml(r.name)}</div><div class="body">${escapeHtml(String(r.raw))}</div></div>`;
@@ -693,23 +792,23 @@
 
   async function renderAnnHistory() {
     const panel = document.getElementById('annHistoryPanel');
-    panel.innerHTML = '<div class="history-row">Loading…</div>';
+    panel.innerHTML = '<div class="history-row">載入緊…</div>';
     const res = await apiFetch('/api/announcement/versions');
     const data = await res.json();
-    if (!data.success) { panel.innerHTML = `<div class="history-row">${data.error || 'Could not load history.'}</div>`; return; }
+    if (!data.success) { panel.innerHTML = `<div class="history-row">${data.error || '無法載入歷史記錄。'}</div>`; return; }
 
     panel.innerHTML = data.versions.map(v => {
-      const when = v.timestamp ? new Date(v.timestamp).toLocaleString() : 'now';
+      const when = v.timestamp ? new Date(v.timestamp).toLocaleString() : '而家';
       const who = v.author ? v.author.slice(0, 2).toUpperCase() : '—';
-      const label = v.label || (v.current ? '(live version)' : '(no description)');
+      const label = v.label || (v.current ? '（現正使用嘅版本）' : '（沒有描述）');
       const sign = v.charDiff > 0 ? '+' : '';
       const diffClass = v.charDiff >= 0 ? 'add' : 'rem';
       const diff = `<span class="${diffClass}">${sign}${v.charDiff} chars</span>`;
       const actions = v.current
-        ? `<span class="badge-current">Live</span>`
+        ? `<span class="badge-current">使用中</span>`
         : `<span class="actions">
-             <button class="link-btn" onclick="previewAnnVersion('${v.id}')">Preview</button>
-             <button class="link-btn" onclick="restoreAnnVersion('${v.id}')">Restore to draft</button>
+             <button class="link-btn" onclick="previewAnnVersion('${v.id}')">預覽</button>
+             <button class="link-btn" onclick="restoreAnnVersion('${v.id}')">還原為草稿</button>
            </span>`;
       return `<div class="history-row${v.current ? ' current' : ''}">
         <span class="vnum">v${v.version}</span>
@@ -721,29 +820,29 @@
     }).join('');
   }
 
-  // Rich HTML isn't shown in this plain-text alert (Restore to draft loads
+  // Rich HTML isn't shown in this plain-text alert (還原為草稿 loads
   // it into the actual TinyMCE editors if you need to see it rendered).
   async function previewAnnVersion(id) {
     const res = await apiFetch(`/api/announcement/versions/${id}`);
     const data = await res.json();
-    if (!data.success) { alert(data.error || 'Could not load that version.'); return; }
-    alert(`Version from ${new Date(data.timestamp).toLocaleString()} by ${data.author}:\n\n` +
-      `Bar text: ${data.data.content}\nCTA 1: ${data.data.cta1Text}\nCTA 2: ${data.data.cta2Text}\n\n` +
-      `(Rich content not shown here — use Restore to draft to view/edit it in the editors.)`);
+    if (!data.success) { alert(data.error || '無法載入嗰個版本。'); return; }
+    alert(`版本來自 ${new Date(data.timestamp).toLocaleString()}，由 ${data.author} 建立：\n\n` +
+      `公告列文字：${data.data.content}\nCTA 1：${data.data.cta1Text}\nCTA 2：${data.data.cta2Text}\n\n` +
+      `（呢度未有顯示豐富內容 — 請用「還原為草稿」喺編輯器入面查看/編輯。）`);
   }
 
   async function restoreAnnVersion(id) {
     const res = await apiFetch(`/api/announcement/versions/${id}`);
     const data = await res.json();
-    if (!data.success) { alert(data.error || 'Could not load that version.'); return; }
-    if (!confirm('Load this version into the editor as a draft? It will not be saved until you click Save Announcement.')) return;
+    if (!data.success) { alert(data.error || '無法載入嗰個版本。'); return; }
+    if (!confirm('要將呢個版本載入編輯器作為草稿嗎？喺你按「儲存公告」之前都唔會儲存。')) return;
     document.getElementById('annContent').value = data.data.content || '';
     document.getElementById('annCta1Text').value = data.data.cta1Text || '';
     document.getElementById('annCta2Text').value = data.data.cta2Text || '';
     await tinyMceReadyPromise;
     tinymce.get('annCta1Content').setContent(data.data.cta1Content || '');
     tinymce.get('annCta2Content').setContent(data.data.cta2Content || '');
-    document.getElementById('annSaveLabel').value = `Restored from ${new Date(data.timestamp).toLocaleDateString()} version`;
+    document.getElementById('annSaveLabel').value = `已還原自 ${new Date(data.timestamp).toLocaleDateString()} 嘅版本`;
     toggleAnnHistory();
   }
 
@@ -812,7 +911,7 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
       }
     }
 
-    statusEl.textContent = 'Saving…';
+    statusEl.textContent = '儲存緊…';
     statusEl.className = 'status';
     try {
       const res = await apiFetch('/api/announcement', {
@@ -828,16 +927,16 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
       });
       const data = await res.json();
       if (data.success) {
-        statusEl.textContent = '✓ Saved. Reps will see the update next time they (re)open the panel.';
+        statusEl.textContent = '✓ 已儲存。Reps 下次（重新）打開面板時會見到更新。';
         statusEl.className = 'status ok';
         document.getElementById('annSaveLabel').value = '';
         loadAnnouncementVersionSummary();
       } else {
-        statusEl.textContent = data.error || 'Save failed.';
+        statusEl.textContent = data.error || '儲存失敗。';
         statusEl.className = 'status err';
       }
     } catch (e) {
-      statusEl.textContent = 'Network error.';
+      statusEl.textContent = '網絡錯誤。';
       statusEl.className = 'status err';
     }
   }
@@ -872,8 +971,8 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
           <div class="who">by ${escapeHtml(s.addedBy || '—')}</div>
         </div>
         <div class="actions">
-          <button class="link-btn" onclick="editAdSuggestion('${s.id}')">Edit</button>
-          <button class="link-btn" style="color:var(--brand);" onclick="deleteAdSuggestion('${s.id}')">Delete</button>
+          <button class="link-btn" onclick="editAdSuggestion('${s.id}')">編輯</button>
+          <button class="link-btn" style="color:var(--brand);" onclick="deleteAdSuggestion('${s.id}')">刪除</button>
         </div>
       </div>`).join('');
   }
@@ -925,7 +1024,7 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
         statusEl.className = 'status err';
       }
     } catch (e) {
-      statusEl.textContent = 'Network error.';
+      statusEl.textContent = '網絡錯誤。';
       statusEl.className = 'status err';
     }
   }
@@ -938,7 +1037,117 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
       if (editingAdSuggestionId === id) cancelAdSuggestionEdit();
       loadAdSuggestions();
     } else {
-      alert(data.error || 'Delete failed.');
+      alert(data.error || '刪除失敗。');
+    }
+  }
+
+  // ---- User management (用戶管理) — admin only, both here and server-side
+  // (routes/users.js's adminOnly). Same edit-fills-the-form-above pattern as
+  // 廣告素材追問建議 above: editingUserToken tracks whether saveUser() should
+  // POST (new) or PUT (existing).
+
+  const ROLE_DISPLAY_NAMES = { admin: '管理員', senior: '資深', standard: '一般' };
+  let usersCache = [];
+  let editingUserToken = '';
+
+  async function loadUsers() {
+    const res = await apiFetch('/api/users');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.success) return;
+    usersCache = data.data;
+    renderUsersTable();
+  }
+
+  function renderUsersTable() {
+    const tbody = document.getElementById('usersTableBody');
+    if (usersCache.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text3);">未有已儲存嘅用戶</td></tr>';
+      return;
+    }
+    tbody.innerHTML = usersCache.map(u => {
+      const isSelf = u.token === TOKEN;
+      const statusBadge = u.disabled ? '<span class="badge-disabled">已停用</span>' : '<span class="badge-current">使用中</span>';
+      const toggleLabel = u.disabled ? '啟用' : '停用';
+      const toggleBtn = isSelf
+        ? ''
+        : `<button class="link-btn" onclick="toggleUserDisabled('${u.token}', ${!u.disabled})">${toggleLabel}</button>`;
+      return `<tr>
+        <td>${escapeHtml(u.name)}</td>
+        <td><span class="token-cell">${escapeHtml(u.token)} <button class="link-btn" onclick="copyToken('${u.token}')" title="複製 Token">複製</button></span></td>
+        <td>${ROLE_DISPLAY_NAMES[u.role] || escapeHtml(u.role)}</td>
+        <td>${statusBadge}</td>
+        <td><button class="link-btn" onclick="editUser('${u.token}')">編輯</button> ${toggleBtn}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function copyToken(token) {
+    navigator.clipboard.writeText(token);
+  }
+
+  function editUser(token) {
+    const u = usersCache.find(x => x.token === token);
+    if (!u) return;
+    editingUserToken = token;
+    document.getElementById('userName').value = u.name;
+    document.getElementById('userRole').value = u.role;
+    document.getElementById('btnSaveUser').textContent = '更新用戶';
+    document.getElementById('btnCancelUser').style.display = 'inline-block';
+    document.getElementById('userStatus').textContent = '';
+  }
+
+  function cancelUserEdit() {
+    editingUserToken = '';
+    document.getElementById('userName').value = '';
+    document.getElementById('userRole').value = 'standard';
+    document.getElementById('btnSaveUser').textContent = '新增用戶';
+    document.getElementById('btnCancelUser').style.display = 'none';
+    document.getElementById('userStatus').textContent = '';
+  }
+
+  async function saveUser() {
+    const name = document.getElementById('userName').value.trim();
+    const role = document.getElementById('userRole').value;
+    const statusEl = document.getElementById('userStatus');
+    if (!name) {
+      statusEl.textContent = '請先輸入姓名';
+      statusEl.className = 'status err';
+      return;
+    }
+    statusEl.textContent = '儲存緊…';
+    statusEl.className = 'status';
+    try {
+      const res = editingUserToken
+        ? await apiFetch(`/api/users/${editingUserToken}`, { method: 'PUT', body: JSON.stringify({ name, role }) })
+        : await apiFetch('/api/users', { method: 'POST', body: JSON.stringify({ name, role }) });
+      const data = await res.json();
+      if (data.success) {
+        const wasNew = !editingUserToken;
+        statusEl.textContent = wasNew
+          ? `✓ 已新增用戶「${escapeHtml(name)}」，Token：${data.data.token}（請複製俾佢，之後喺呢頁唔會再顯示）`
+          : '✓ 已更新';
+        statusEl.className = 'status ok';
+        cancelUserEdit();
+        loadUsers();
+      } else {
+        statusEl.textContent = data.error || '儲存失敗。';
+        statusEl.className = 'status err';
+      }
+    } catch (e) {
+      statusEl.textContent = '網絡錯誤。';
+      statusEl.className = 'status err';
+    }
+  }
+
+  async function toggleUserDisabled(token, disabled) {
+    if (disabled && !confirm('確定要停用呢個用戶嗎？佢會即刻攞返存取權限。')) return;
+    const res = await apiFetch(`/api/users/${token}`, { method: 'PUT', body: JSON.stringify({ disabled }) });
+    const data = await res.json();
+    if (data.success) {
+      loadUsers();
+    } else {
+      alert(data.error || '更新失敗。');
     }
   }
 
@@ -950,7 +1159,7 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
 
     previewBtn.disabled = true;
     applyBtn.disabled = true;
-    statusEl.textContent = apply ? 'Applying…' : 'Previewing…';
+    statusEl.textContent = apply ? '套用緊…' : '預覽緊…';
     statusEl.className = 'status';
 
     try {
@@ -959,14 +1168,14 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
         body: JSON.stringify({ apply })
       });
       if (res.status === 404) {
-        statusEl.textContent = 'Dev tools not enabled on this server (ENABLE_DEV_TOOLS is off) — only works against your local dev server.';
+        statusEl.textContent = '呢個伺服器未開啟 Dev tools（ENABLE_DEV_TOOLS 未開）— 只可以喺你本機嘅 dev server 使用。';
         statusEl.className = 'status err';
         previewBtn.disabled = false;
         return;
       }
       const data = await res.json();
       if (!data.success) {
-        statusEl.textContent = data.error || 'Sync failed.';
+        statusEl.textContent = data.error || '同步失敗。';
         statusEl.className = 'status err';
         previewBtn.disabled = false;
         applyBtn.disabled = !outEl.dataset.previewed;
@@ -975,19 +1184,19 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
       outEl.textContent = data.data.output;
       outEl.style.display = 'block';
       if (apply) {
-        statusEl.textContent = '✓ Applied. Reload the unpacked extension and refresh this page to see changes.';
+        statusEl.textContent = '✓ 已套用。請重新載入 unpacked extension 並重新整理呢一頁以查看變更。';
         statusEl.className = 'status ok';
         outEl.dataset.previewed = '';
         applyBtn.disabled = true;
       } else {
-        statusEl.textContent = 'Preview complete — review the output above, then Apply if it looks right.';
+        statusEl.textContent = '預覽完成 — 請檢查以上結果，冇問題就按套用。';
         statusEl.className = 'status';
         outEl.dataset.previewed = '1';
         applyBtn.disabled = false;
       }
       previewBtn.disabled = false;
     } catch (e) {
-      statusEl.textContent = 'Network error.';
+      statusEl.textContent = '網絡錯誤。';
       statusEl.className = 'status err';
       previewBtn.disabled = false;
     }
