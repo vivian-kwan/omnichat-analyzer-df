@@ -54,7 +54,10 @@ function canManage(req, entry) {
 // since GET /api/templates is readable by every authenticated user and the
 // token is effectively that creator's login credential. canManage tells the
 // extension whether to show Edit/Delete for this row without ever handing
-// it another user's token to compare itself.
+// it another user's token to compare itself. The 全部/自己/其他 filter
+// doesn't need a server-computed field at all — addedBy is already plain
+// text on every entry, so the extension just compares it against its own
+// identity.name (from GET /api/me) client-side.
 function toClientShape(entry, req) {
   const { createdByToken, ...rest } = entry;
   return { ...rest, canManage: canManage(req, entry) };

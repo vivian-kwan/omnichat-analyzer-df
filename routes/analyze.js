@@ -189,7 +189,7 @@ router.post('/suggest-followup', authMiddleware, async (req, res) => {
       if (countsText) userMessage += `\n\nBrand message count per stage:\n${countsText}`;
     }
     userMessage += `\n\nLatest stage (most recent brand message's stage, i.e. where the conversation currently stands): ${latestStage || 'none yet — no brand message has a real stage'}`;
-    const model = provider === 'openai' ? 'gpt-4o-mini' : provider === 'gemini' ? 'gemini-2.5-flash' : 'deepseek-chat';
+    const model = provider === 'openai' ? 'gpt-4o-mini' : provider === 'gemini' ? 'gemini-3.6-flash' : 'deepseek-chat';
     const result = await callAIPlainText(provider, apiKey, model, systemPrompt, userMessage, 0.3);
     res.json({ success: true, data: formatMarkdown(result) });
   } catch (e) {
