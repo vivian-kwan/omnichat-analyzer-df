@@ -135,6 +135,16 @@
     .announcement-box label:first-of-type { margin-top: 0; }
     .cta-columns { display: flex; gap: 20px; flex-wrap: wrap; }
     .cta-columns > div { flex: 1; min-width: 280px; }
+    .ad-sug-row {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: var(--surface2);
+    }
+    .ad-sug-row .field-label { font-size: 10.5px; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; margin-top: 8px; }
+    .ad-sug-row .field-label:first-child { margin-top: 0; }
+    .ad-sug-row .field-value { font-size: 13px; color: var(--text); margin-top: 2px; }
+    .ad-sug-row .who { font-size: 11px; color: var(--text3); margin-top: 8px; }
+    .ad-sug-row .actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+    .ad-sug-empty { font-size: 12.5px; color: var(--text3); padding: 4px 0 14px; }
   </style>
 </head>
 <body>
@@ -197,6 +207,24 @@
       <button class="btn-save" onclick="saveAnnouncement()">Save Announcement</button>
     </div>
     <div class="status" id="annStatus"></div>
+  </div>
+
+  <div class="announcement-box" id="adSuggestionsBox" style="display:none">
+    <h2>廣告素材追問建議</h2>
+    <p class="hint">對應廣告素材名稱同建議追問問題嘅參考清單，供 reps 喺邀請報價階段人手參考。純手動清單，不會與已擷取嘅對話資料自動比對。</p>
+
+    <div id="adSuggestionsList"></div>
+
+    <label>廣告素材名稱</label>
+    <input type="text" id="adSugName" placeholder="例：透明窗花_9月">
+    <label>建議追問問題</label>
+    <textarea id="adSugQuestion" style="height:80px;" placeholder="請問您想咗解嘅係邊個單位嘅透明窗花呢？"></textarea>
+
+    <div class="editor-actions">
+      <button class="btn-save" id="btnSaveAdSuggestion" onclick="saveAdSuggestion()">儲存建議</button>
+      <button class="btn-cancel" id="btnCancelAdSuggestion" onclick="cancelAdSuggestionEdit()" style="display:none;">Cancel</button>
+    </div>
+    <div class="status" id="adSugStatus"></div>
   </div>
 
   <div class="sync-box" id="syncBox" style="display:none">
@@ -333,11 +361,13 @@
       document.getElementById('authBox').style.display = 'none';
       document.getElementById('skillListBox').style.display = 'block';
       document.getElementById('announcementBox').style.display = 'block';
+      document.getElementById('adSuggestionsBox').style.display = 'block';
       document.getElementById('syncBox').style.display = 'block';
       document.getElementById('userLabel').textContent = `Connected to ${BASE_URL}`;
       renderSkills(data.skills);
       restoreTestCreds();
       loadAnnouncementEditor();
+      loadAdSuggestions();
     } catch (e) {
       statusEl.textContent = 'Could not reach server. Check URL and try again.';
       statusEl.className = 'err';
@@ -809,6 +839,106 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
     } catch (e) {
       statusEl.textContent = 'Network error.';
       statusEl.className = 'status err';
+    }
+  }
+
+  // ---- Ad creative follow-up suggestions (廣告素材追問建議) ----
+
+  let adSuggestionsCache = [];
+  let editingAdSuggestionId = '';
+
+  async function loadAdSuggestions() {
+    const res = await apiFetch('/api/ad-suggestions');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.success) return;
+    adSuggestionsCache = data.data;
+    renderAdSuggestionsList();
+  }
+
+  function renderAdSuggestionsList() {
+    const container = document.getElementById('adSuggestionsList');
+    if (adSuggestionsCache.length === 0) {
+      container.innerHTML = '<p class="ad-sug-empty">未有已儲存嘅廣告素材追問建議</p>';
+      return;
+    }
+    container.innerHTML = adSuggestionsCache.map(s => `
+      <div class="ad-sug-row">
+        <div style="flex:1; min-width:0;">
+          <div class="field-label">廣告素材名稱</div>
+          <div class="field-value">${escapeHtml(s.adName)}</div>
+          <div class="field-label">建議追問問題</div>
+          <div class="field-value">${escapeHtml(s.suggestedQuestion)}</div>
+          <div class="who">by ${escapeHtml(s.addedBy || '—')}</div>
+        </div>
+        <div class="actions">
+          <button class="link-btn" onclick="editAdSuggestion('${s.id}')">Edit</button>
+          <button class="link-btn" style="color:var(--brand);" onclick="deleteAdSuggestion('${s.id}')">Delete</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function editAdSuggestion(id) {
+    const s = adSuggestionsCache.find(x => x.id === id);
+    if (!s) return;
+    editingAdSuggestionId = id;
+    document.getElementById('adSugName').value = s.adName;
+    document.getElementById('adSugQuestion').value = s.suggestedQuestion;
+    document.getElementById('btnSaveAdSuggestion').textContent = '更新建議';
+    document.getElementById('btnCancelAdSuggestion').style.display = 'inline-block';
+    document.getElementById('adSugStatus').textContent = '';
+    document.getElementById('adSugName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function cancelAdSuggestionEdit() {
+    editingAdSuggestionId = '';
+    document.getElementById('adSugName').value = '';
+    document.getElementById('adSugQuestion').value = '';
+    document.getElementById('btnSaveAdSuggestion').textContent = '儲存建議';
+    document.getElementById('btnCancelAdSuggestion').style.display = 'none';
+    document.getElementById('adSugStatus').textContent = '';
+  }
+
+  async function saveAdSuggestion() {
+    const adName = document.getElementById('adSugName').value.trim();
+    const suggestedQuestion = document.getElementById('adSugQuestion').value.trim();
+    const statusEl = document.getElementById('adSugStatus');
+    if (!adName || !suggestedQuestion) {
+      statusEl.textContent = '請先輸入廣告素材名稱同建議追問問題';
+      statusEl.className = 'status err';
+      return;
+    }
+    statusEl.textContent = '儲存緊…';
+    statusEl.className = 'status';
+    try {
+      const res = editingAdSuggestionId
+        ? await apiFetch(`/api/ad-suggestions/${editingAdSuggestionId}`, { method: 'PUT', body: JSON.stringify({ adName, suggestedQuestion }) })
+        : await apiFetch('/api/ad-suggestions', { method: 'POST', body: JSON.stringify({ adName, suggestedQuestion }) });
+      const data = await res.json();
+      if (data.success) {
+        statusEl.textContent = '✓ 已儲存';
+        statusEl.className = 'status ok';
+        cancelAdSuggestionEdit();
+        loadAdSuggestions();
+      } else {
+        statusEl.textContent = data.error || '儲存失敗';
+        statusEl.className = 'status err';
+      }
+    } catch (e) {
+      statusEl.textContent = 'Network error.';
+      statusEl.className = 'status err';
+    }
+  }
+
+  async function deleteAdSuggestion(id) {
+    if (!confirm('確定要刪除呢個廣告素材追問建議？')) return;
+    const res = await apiFetch(`/api/ad-suggestions/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      if (editingAdSuggestionId === id) cancelAdSuggestionEdit();
+      loadAdSuggestions();
+    } else {
+      alert(data.error || 'Delete failed.');
     }
   }
 
