@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Omnichat Analyzer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    :root { --border:#e0e0e0; --text:#111111; --text2:#444444; --text3:#777777; --brand:#FF0000; --surface2:#fafafa; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color:var(--text); background:#ffffff; line-height:1.65; }
+    header { background:#1c1b18; color:#f7f6f2; padding:20px 24px; display:flex; align-items:center; gap:12px; }
+    header h1 { font-size:16px; font-weight:700; margin:0; }
+    .badge { background:var(--brand); color:#fff; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; padding:3px 9px; border-radius:10px; }
+    .container { max-width:760px; margin:0 auto; padding:40px 20px 80px; }
+    h2 { font-size:20px; margin:36px 0 10px; letter-spacing:-.2px; }
+    h2:first-of-type { margin-top:0; }
+    p { color:var(--text2); font-size:14.5px; margin:0 0 12px; }
+    ul { color:var(--text2); font-size:14.5px; padding-left:20px; margin:0 0 12px; }
+    li { margin-bottom:6px; }
+    .updated { color:var(--text3); font-size:12.5px; margin-bottom:32px; }
+    .callout { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:14px 16px; font-size:13.5px; color:var(--text2); margin:16px 0; }
+    a { color:var(--brand); }
+    code { font-family:ui-monospace, monospace; font-size:12.5px; background:var(--surface2); border:1px solid var(--border); padding:1px 5px; border-radius:3px; }
+  </style>
+</head>
+<body>
+<header><h1>Omnichat Analyzer</h1><span class="badge">Privacy Policy</span></header>
+<div class="container">
+  <p class="updated">Last updated: 2026-09-08</p>
+
+  <h2>What this extension is</h2>
+  <p>Omnichat Analyzer is a Chrome extension built by DF創意家居 for its own pre-sales customer service team. It runs only on <code>console.omnichat.ai</code>, DF's live-chat platform, and helps sales reps analyze the conversation currently open in that console: summarizing it, detecting the quoted price, classifying it into a sales-funnel stage, and applying the matching tag. It is not distributed to, or intended for, the general public.</p>
+
+  <h2>What data this extension reads</h2>
+  <p>When a rep runs an analysis, the extension reads:</p>
+  <ul>
+    <li>The customer conversation currently open (or a batch of conversations, for bulk analysis) inside the Omnichat console — message text, sender, and timestamps.</li>
+    <li>The rep's own account details entered into the extension's Settings tab: their login token and the API key for whichever AI provider they've chosen (OpenAI, Google Gemini, or DeepSeek).</li>
+  </ul>
+  <p>It does not read any other website, and does not read your general browsing/web history.</p>
+
+  <h2>Where that data goes</h2>
+  <p>Conversation content is sent to two places, both necessary to produce the analysis the rep asked for:</p>
+  <ul>
+    <li><strong>DF's own backend server</strong> (<code>api.df-creativehome.com</code>), which authenticates the rep and relays the request to the AI provider. The server does not persist raw conversation text to disk — it is processed in memory for the duration of that one request and then discarded.</li>
+    <li><strong>The AI provider the rep selected</strong> (OpenAI, Google Gemini, or DeepSeek), using the rep's own API key, to generate the summary/classification. Each provider's own privacy policy governs how they handle a request sent to their API.</li>
+  </ul>
+  <p>DF's backend separately stores account/config data needed for the team to use the tool at all: login tokens and roles for each rep, and a small shared library of AI prompt templates, saved reply templates, and common-question shortcuts the team has chosen to save. It does not store a running archive of customers' raw chat transcripts.</p>
+
+  <h2>What's stored on your own device</h2>
+  <p>The extension saves your own settings in Chrome's local/sync storage (never sent to us until you use a feature that needs it): your login token, your chosen AI provider and its API key, and small UI preferences like whether the panel is collapsed. This is what lets you avoid re-entering your token/key every time you open the tool.</p>
+
+  <h2>What we don't do</h2>
+  <ul>
+    <li>We do not sell or rent any data to third parties.</li>
+    <li>We do not use conversation content for advertising, and there is no ad or analytics SDK in this extension.</li>
+    <li>We do not use this data to determine creditworthiness or for lending purposes.</li>
+    <li>We do not transfer data for any purpose unrelated to the analysis feature described above.</li>
+  </ul>
+
+  <div class="callout">This extension is built for one company's internal sales team. If you were given a link to install it and you are not part of that team, it will not function for you — every request requires a login token issued by a DF admin.</div>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy or a request to review/delete your account data: contact your DF Creative Home admin.</p>
+</div>
+</body>
+</html>
