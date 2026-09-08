@@ -3,6 +3,10 @@
     "vivian-2ba76e1b-2026": {
       "name": "Vivian",
       "role": "admin"
+    },
+    "dfmanagement-56aac659-2026": {
+      "name": "DF Management",
+      "role": "admin"
     }
   }
 }

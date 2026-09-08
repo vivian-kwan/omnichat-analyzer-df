@@ -1068,14 +1068,15 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
     tbody.innerHTML = usersCache.map(u => {
       const isSelf = u.token === TOKEN;
       const statusBadge = u.disabled ? '<span class="badge-disabled">已停用</span>' : '<span class="badge-current">使用中</span>';
-      const coreBadge = u.isCore ? ' <span class="badge-current" title="核心管理員帳戶 — 淨係可以透過 GitHub + 部署修改，唔可以喺呢度編輯/停用">核心</span>' : '';
+      // Core rows are only ever sent to this list at all when the viewer is
+      // themselves a core admin (GET /api/users filters them out entirely
+      // for anyone else — see routes/users.js) — so a badge here is safe,
+      // it's not revealing anything to someone who couldn't already see it.
+      const coreBadge = u.isCore ? ' <span class="badge-current" title="核心管理員帳戶 — 淨係可以透過 GitHub + 部署修改，唔可以喺呢度編輯/停用/重新產生 Token">核心</span>' : '';
       const toggleLabel = u.disabled ? '啟用' : '停用';
-      // Core accounts are read-only through this API (routes/users.js
-      // rejects writes to them) — no edit/disable actions shown for them,
-      // same idea as hiding 停用 on your own logged-in row.
       const actions = u.isCore
         ? ''
-        : `<button class="link-btn" onclick="editUser('${u.token}')">編輯</button> ${isSelf ? '' : `<button class="link-btn" onclick="toggleUserDisabled('${u.token}', ${!u.disabled})">${toggleLabel}</button>`}`;
+        : `<button class="link-btn" onclick="editUser('${u.token}')">編輯</button> ${isSelf ? '' : `<button class="link-btn" onclick="toggleUserDisabled('${u.token}', ${!u.disabled})">${toggleLabel}</button>`} <button class="link-btn" onclick="regenerateUserToken('${u.token}')">重新產生 Token</button>`;
       return `<tr>
         <td>${escapeHtml(u.name)}</td>
         <td><span class="token-cell">${escapeHtml(u.token)} <button class="link-btn" onclick="copyToken('${u.token}')" title="複製 Token">複製</button></span></td>
@@ -1152,6 +1153,24 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
       loadUsers();
     } else {
       alert(data.error || '更新失敗。');
+    }
+  }
+
+  // Old token stops working the instant this succeeds — the confirm()
+  // makes that explicit, especially for the isSelf case (regenerating your
+  // own token logs your current session out; another admin can always give
+  // you the new one, so it's recoverable, just disruptive if unexpected).
+  async function regenerateUserToken(token) {
+    const u = usersCache.find(x => x.token === token);
+    const label = u ? `「${u.name}」` : '呢個用戶';
+    if (!confirm(`確定要幫${label}重新產生 Token 嗎？舊 Token 會即刻失效，需要將新 Token 交返俾佢。`)) return;
+    const res = await apiFetch(`/api/users/${token}/regenerate`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      alert(`✓ 已重新產生 Token：${data.data.token}\n\n請複製並交俾${label}，之後喺呢頁唔會再顯示。`);
+      loadUsers();
+    } else {
+      alert(data.error || '重新產生失敗。');
     }
   }
 

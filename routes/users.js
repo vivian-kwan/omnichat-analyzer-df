@@ -33,18 +33,23 @@ function generateToken(name) {
   return `${slug}-${hex}-${year}`;
 }
 
-// GET /api/users — core + managed users combined (core marked isCore:true,
-// read-only). Token is included (unlike other resources' createdByToken
+// GET /api/users — managed users always included; core users only included
+// (and marked isCore:true) when the REQUESTER is themselves a core admin.
+// A managed-tier admin gets no trace of core accounts at all — not a
+// filtered-in-the-UI row, genuinely absent from this response — since a
+// client-side-only hide would still leak them to anyone inspecting network
+// traffic. Token is included (unlike other resources' createdByToken
 // stripping): it's the thing being managed, and the admin needs to be able
 // to read/copy it to hand a new user their login token.
 router.get('/users', authMiddleware, adminOnly, (req, res) => {
   const core = loadCoreUsers().tokens;
   const managed = loadManagedUsers().tokens;
+  const requesterIsCore = !!core[req.user.token];
   const list = [
-    ...Object.entries(core).map(([token, u]) => ({
+    ...(requesterIsCore ? Object.entries(core).map(([token, u]) => ({
       token, name: u.name, role: u.role, disabled: !!u.disabled,
       createdAt: u.createdAt || null, createdBy: u.createdBy || null, isCore: true
-    })),
+    })) : []),
     ...Object.entries(managed).map(([token, u]) => ({
       token, name: u.name, role: u.role, disabled: !!u.disabled,
       createdAt: u.createdAt || null, createdBy: u.createdBy || null, isCore: false
@@ -107,6 +112,30 @@ router.put('/users/:token', authMiddleware, adminOnly, (req, res) => {
 
   saveManagedUsers(data);
   res.json({ success: true, data: { token: req.params.token, ...entry, isCore: false } });
+});
+
+// POST /api/users/:token/regenerate — issues a fresh token for the same
+// user, invalidating the old one immediately. Managed tier only, same
+// reasoning as PUT above — but doubly so here: a regenerated core token
+// would only exist at runtime, and the next git deploy would silently
+// revert data/users.json back to the old (now-invalid) token, re-creating
+// exactly the lockout this whole two-tier split exists to prevent.
+router.post('/users/:token/regenerate', authMiddleware, adminOnly, (req, res) => {
+  const core = loadCoreUsers().tokens;
+  if (core[req.params.token]) {
+    return res.status(403).json({ success: false, error: '呢個係核心管理員帳戶，唔可以透過呢度重新產生 Token — 需要直接編輯 data/users.json 並部署。' });
+  }
+  const data = loadManagedUsers();
+  const entry = data.tokens[req.params.token];
+  if (!entry) return res.status(404).json({ success: false, error: 'User not found.' });
+
+  let newToken = generateToken(entry.name);
+  while (core[newToken] || data.tokens[newToken]) newToken = generateToken(entry.name);
+
+  delete data.tokens[req.params.token];
+  data.tokens[newToken] = entry;
+  saveManagedUsers(data);
+  res.json({ success: true, data: { token: newToken, ...entry, isCore: false } });
 });
 
 module.exports = router;
