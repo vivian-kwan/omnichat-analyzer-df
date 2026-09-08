@@ -221,8 +221,16 @@
               <option value="gemini">Gemini</option>
               <option value="deepseek">DeepSeek</option>
             </select>
-            <input type="password" id="testApiKey" placeholder="已選供應商嘅 API key" />
           </div>
+          <!-- All three keys visible/saved at once (same idea as the
+               extension's own Settings tab) — switching testProvider above
+               no longer means re-typing a key you'd already entered. -->
+          <label style="font-size:11px; color:var(--text3); display:block; margin-bottom:3px;">OpenAI API Key</label>
+          <input type="password" id="testApiKey-openai" placeholder="sk-..." style="width:100%; margin-bottom:8px;" />
+          <label style="font-size:11px; color:var(--text3); display:block; margin-bottom:3px;">Gemini API Key</label>
+          <input type="password" id="testApiKey-gemini" placeholder="AIzaSy..." style="width:100%; margin-bottom:8px;" />
+          <label style="font-size:11px; color:var(--text3); display:block; margin-bottom:3px;">DeepSeek API Key</label>
+          <input type="password" id="testApiKey-deepseek" placeholder="sk-..." style="width:100%; margin-bottom:10px;" />
 
           <label style="font-size:11.5px; color:var(--text3); display:block; margin-bottom:4px;">
             Paste a 下載對話 CSV export (客戶總覽 → 下載 CSV)
@@ -614,16 +622,22 @@
   function restoreTestCreds() {
     const saved = JSON.parse(localStorage.getItem('omniSkillTestCreds') || '{}');
     if (saved.provider) document.getElementById('testProvider').value = saved.provider;
-    if (saved.apiKey) document.getElementById('testApiKey').value = saved.apiKey;
+    ['openai', 'gemini', 'deepseek'].forEach(p => {
+      if (saved[`apiKey_${p}`]) document.getElementById(`testApiKey-${p}`).value = saved[`apiKey_${p}`];
+    });
   }
   function persistTestCreds() {
     localStorage.setItem('omniSkillTestCreds', JSON.stringify({
       provider: document.getElementById('testProvider').value,
-      apiKey: document.getElementById('testApiKey').value
+      apiKey_openai: document.getElementById('testApiKey-openai').value,
+      apiKey_gemini: document.getElementById('testApiKey-gemini').value,
+      apiKey_deepseek: document.getElementById('testApiKey-deepseek').value
     }));
   }
   document.getElementById('testProvider').addEventListener('change', persistTestCreds);
-  document.getElementById('testApiKey').addEventListener('change', persistTestCreds);
+  ['openai', 'gemini', 'deepseek'].forEach(p => {
+    document.getElementById(`testApiKey-${p}`).addEventListener('change', persistTestCreds);
+  });
 
   // Small RFC4180-ish CSV parser (handles quoted fields with embedded
   // commas/newlines and "" escapes) — downloadChatsCsv() in the extension
@@ -695,7 +709,7 @@
   async function runSampleTest() {
     const content = document.getElementById('editorContent').value;
     const provider = document.getElementById('testProvider').value;
-    const apiKey = document.getElementById('testApiKey').value.trim();
+    const apiKey = document.getElementById(`testApiKey-${provider}`).value.trim();
     const runBtn = document.getElementById('btnRunTest');
     const resultsEl = document.getElementById('sampleResults');
 
