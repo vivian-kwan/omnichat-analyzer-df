@@ -418,14 +418,14 @@
 
     try {
       const res = await apiFetch('/api/skills');
-      if (res.status === 403) {
-        statusEl.textContent = '拒絕存取 — 需要資深權限。';
-        statusEl.className = 'err';
-        return;
-      }
       if (!res.ok) {
+        // 403 covers two different causes (unrecognised token vs. a real
+        // token that just isn't senior/admin) — read the actual error text
+        // instead of assuming from the status code alone, which used to
+        // show "senior access required" even when the token wasn't
+        // recognised at all (confusing while rotating/deploying a token).
         const d = await res.json().catch(() => ({}));
-        statusEl.textContent = d.error || `錯誤 ${res.status}`;
+        statusEl.textContent = d.error || (res.status === 403 ? '拒絕存取 — 需要資深權限。' : `錯誤 ${res.status}`);
         statusEl.className = 'err';
         return;
       }
