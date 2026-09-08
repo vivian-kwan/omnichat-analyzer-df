@@ -41,28 +41,36 @@ function generateToken(name) {
 // traffic. Token is included (unlike other resources' createdByToken
 // stripping): it's the thing being managed, and the admin needs to be able
 // to read/copy it to hand a new user their login token.
+// Record-keeping only — these are NOT used by any AI call server-side (the
+// extension still sends its own key fresh on every request, per
+// routes/analyze.js). Purely so an admin can track which key was issued to
+// whom. toRow() keeps GET's shape (and PUT/POST's response shape) in sync
+// with one definition.
+function toRow(token, u, isCore) {
+  return {
+    token, name: u.name, role: u.role, disabled: !!u.disabled,
+    createdAt: u.createdAt || null, createdBy: u.createdBy || null, isCore,
+    apiKeyOpenAI: u.apiKeyOpenAI || '', apiKeyGemini: u.apiKeyGemini || '', apiKeyDeepSeek: u.apiKeyDeepSeek || ''
+  };
+}
+
 router.get('/users', authMiddleware, adminOnly, (req, res) => {
   const core = loadCoreUsers().tokens;
   const managed = loadManagedUsers().tokens;
   const requesterIsCore = !!core[req.user.token];
   const list = [
-    ...(requesterIsCore ? Object.entries(core).map(([token, u]) => ({
-      token, name: u.name, role: u.role, disabled: !!u.disabled,
-      createdAt: u.createdAt || null, createdBy: u.createdBy || null, isCore: true
-    })) : []),
-    ...Object.entries(managed).map(([token, u]) => ({
-      token, name: u.name, role: u.role, disabled: !!u.disabled,
-      createdAt: u.createdAt || null, createdBy: u.createdBy || null, isCore: false
-    }))
+    ...(requesterIsCore ? Object.entries(core).map(([token, u]) => toRow(token, u, true)) : []),
+    ...Object.entries(managed).map(([token, u]) => toRow(token, u, false))
   ];
   list.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
   res.json({ success: true, data: list });
 });
 
-// POST /api/users  { name, role } — always creates in the managed
-// (gitignored) tier. Generates the token server-side.
+// POST /api/users  { name, role, apiKeyOpenAI?, apiKeyGemini?,
+// apiKeyDeepSeek? } — always creates in the managed (gitignored) tier.
+// Generates the token server-side.
 router.post('/users', authMiddleware, adminOnly, (req, res) => {
-  const { name, role } = req.body;
+  const { name, role, apiKeyOpenAI, apiKeyGemini, apiKeyDeepSeek } = req.body;
   if (typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ success: false, error: 'name is required.' });
   }
@@ -78,19 +86,25 @@ router.post('/users', authMiddleware, adminOnly, (req, res) => {
     role,
     disabled: false,
     createdAt: new Date().toISOString(),
-    createdBy: req.user.name
+    createdBy: req.user.name,
+    apiKeyOpenAI: typeof apiKeyOpenAI === 'string' ? apiKeyOpenAI.trim() : '',
+    apiKeyGemini: typeof apiKeyGemini === 'string' ? apiKeyGemini.trim() : '',
+    apiKeyDeepSeek: typeof apiKeyDeepSeek === 'string' ? apiKeyDeepSeek.trim() : ''
   };
   data.tokens[token] = entry;
   saveManagedUsers(data);
-  res.json({ success: true, data: { token, ...entry, isCore: false } });
+  res.json({ success: true, data: toRow(token, entry, false) });
 });
 
-// PUT /api/users/:token  { name?, role?, disabled? } — partial update,
-// managed tier only. A core token is looked up but never written to; it
-// gets a clear 403 instead of a silent no-op or a 404 that reads as "not
-// found" when it obviously exists in the list the admin is looking at.
+// PUT /api/users/:token  { name?, role?, disabled?, apiKeyOpenAI?,
+// apiKeyGemini?, apiKeyDeepSeek? } — partial update, managed tier only. A
+// core token is looked up but never written to; it gets a clear 403
+// instead of a silent no-op or a 404 that reads as "not found" when it
+// obviously exists in the list the admin is looking at. Key fields accept
+// an empty string to explicitly clear a previously-recorded key (a plain
+// `if (value)` check would make that impossible).
 router.put('/users/:token', authMiddleware, adminOnly, (req, res) => {
-  const { name, role, disabled } = req.body;
+  const { name, role, disabled, apiKeyOpenAI, apiKeyGemini, apiKeyDeepSeek } = req.body;
   const core = loadCoreUsers().tokens;
   if (core[req.params.token]) {
     return res.status(403).json({ success: false, error: '呢個係核心管理員帳戶，唔可以透過呢度修改 — 需要直接編輯 data/users.json 並部署。' });
@@ -109,9 +123,12 @@ router.put('/users/:token', authMiddleware, adminOnly, (req, res) => {
   if (typeof name === 'string' && name.trim()) entry.name = name.trim();
   if (role !== undefined) entry.role = role;
   if (typeof disabled === 'boolean') entry.disabled = disabled;
+  if (typeof apiKeyOpenAI === 'string') entry.apiKeyOpenAI = apiKeyOpenAI.trim();
+  if (typeof apiKeyGemini === 'string') entry.apiKeyGemini = apiKeyGemini.trim();
+  if (typeof apiKeyDeepSeek === 'string') entry.apiKeyDeepSeek = apiKeyDeepSeek.trim();
 
   saveManagedUsers(data);
-  res.json({ success: true, data: { token: req.params.token, ...entry, isCore: false } });
+  res.json({ success: true, data: toRow(req.params.token, entry, false) });
 });
 
 // POST /api/users/:token/regenerate — issues a fresh token for the same
@@ -135,7 +152,7 @@ router.post('/users/:token/regenerate', authMiddleware, adminOnly, (req, res) =>
   delete data.tokens[req.params.token];
   data.tokens[newToken] = entry;
   saveManagedUsers(data);
-  res.json({ success: true, data: { token: newToken, ...entry, isCore: false } });
+  res.json({ success: true, data: toRow(newToken, entry, false) });
 });
 
 module.exports = router;

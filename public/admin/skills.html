@@ -333,7 +333,7 @@
       <div style="overflow-x:auto;">
         <table class="users-table">
           <thead>
-            <tr><th>姓名</th><th>Token</th><th>角色</th><th>狀態</th><th>操作</th></tr>
+            <tr><th>姓名</th><th>Token</th><th>角色</th><th>狀態</th><th>AI Keys</th><th>操作</th></tr>
           </thead>
           <tbody id="usersTableBody"></tbody>
         </table>
@@ -348,6 +348,15 @@
           <option value="senior">資深</option>
           <option value="admin">管理員</option>
         </select>
+        <!-- Record-keeping only — not used by any AI call server-side, the
+             extension still sends its own key fresh on every request. Just
+             lets an admin track which key was issued to whom. -->
+        <label>OpenAI API Key</label>
+        <input type="password" id="userApiKeyOpenAI" placeholder="sk-...">
+        <label>Gemini API Key</label>
+        <input type="password" id="userApiKeyGemini" placeholder="AIzaSy...">
+        <label>DeepSeek API Key</label>
+        <input type="password" id="userApiKeyDeepSeek" placeholder="sk-...">
         <div class="editor-actions">
           <button class="btn-save" id="btnSaveUser" onclick="saveUser()">新增用戶</button>
           <button class="btn-cancel" id="btnCancelUser" onclick="cancelUserEdit()" style="display:none;">取消</button>
@@ -1076,7 +1085,7 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
   function renderUsersTable() {
     const tbody = document.getElementById('usersTableBody');
     if (usersCache.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text3);">未有已儲存嘅用戶</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text3);">未有已儲存嘅用戶</td></tr>';
       return;
     }
     tbody.innerHTML = usersCache.map(u => {
@@ -1091,11 +1100,18 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
       const actions = u.isCore
         ? ''
         : `<button class="link-btn" onclick="editUser('${u.token}')">編輯</button> ${isSelf ? '' : `<button class="link-btn" onclick="toggleUserDisabled('${u.token}', ${!u.disabled})">${toggleLabel}</button>`} <button class="link-btn" onclick="regenerateUserToken('${u.token}')">重新產生 Token</button>`;
+      // Compact indicator only — record-keeping, not the actual key
+      // values, matching the token column's own reveal-on-demand shape
+      // rather than three extra masked-input-width columns.
+      const keysSummary = [
+        ['OpenAI', u.apiKeyOpenAI], ['Gemini', u.apiKeyGemini], ['DeepSeek', u.apiKeyDeepSeek]
+      ].map(([label, val]) => `${label}${val ? '✓' : '—'}`).join(' ');
       return `<tr>
         <td>${escapeHtml(u.name)}</td>
         <td><span class="token-cell">${escapeHtml(u.token)} <button class="link-btn" onclick="copyToken('${u.token}')" title="複製 Token">複製</button></span></td>
         <td>${ROLE_DISPLAY_NAMES[u.role] || escapeHtml(u.role)}${coreBadge}</td>
         <td>${statusBadge}</td>
+        <td style="font-size:11px; font-family:'IBM Plex Mono', monospace; color:var(--text3); white-space:nowrap;">${keysSummary}</td>
         <td>${actions}</td>
       </tr>`;
     }).join('');
@@ -1111,6 +1127,9 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
     editingUserToken = token;
     document.getElementById('userName').value = u.name;
     document.getElementById('userRole').value = u.role;
+    document.getElementById('userApiKeyOpenAI').value = u.apiKeyOpenAI || '';
+    document.getElementById('userApiKeyGemini').value = u.apiKeyGemini || '';
+    document.getElementById('userApiKeyDeepSeek').value = u.apiKeyDeepSeek || '';
     document.getElementById('btnSaveUser').textContent = '更新用戶';
     document.getElementById('btnCancelUser').style.display = 'inline-block';
     document.getElementById('userStatus').textContent = '';
@@ -1120,6 +1139,9 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
     editingUserToken = '';
     document.getElementById('userName').value = '';
     document.getElementById('userRole').value = 'standard';
+    document.getElementById('userApiKeyOpenAI').value = '';
+    document.getElementById('userApiKeyGemini').value = '';
+    document.getElementById('userApiKeyDeepSeek').value = '';
     document.getElementById('btnSaveUser').textContent = '新增用戶';
     document.getElementById('btnCancelUser').style.display = 'none';
     document.getElementById('userStatus').textContent = '';
@@ -1128,6 +1150,9 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
   async function saveUser() {
     const name = document.getElementById('userName').value.trim();
     const role = document.getElementById('userRole').value;
+    const apiKeyOpenAI = document.getElementById('userApiKeyOpenAI').value.trim();
+    const apiKeyGemini = document.getElementById('userApiKeyGemini').value.trim();
+    const apiKeyDeepSeek = document.getElementById('userApiKeyDeepSeek').value.trim();
     const statusEl = document.getElementById('userStatus');
     if (!name) {
       statusEl.textContent = '請先輸入姓名';
@@ -1137,9 +1162,10 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
     statusEl.textContent = '儲存緊…';
     statusEl.className = 'status';
     try {
+      const body = JSON.stringify({ name, role, apiKeyOpenAI, apiKeyGemini, apiKeyDeepSeek });
       const res = editingUserToken
-        ? await apiFetch(`/api/users/${editingUserToken}`, { method: 'PUT', body: JSON.stringify({ name, role }) })
-        : await apiFetch('/api/users', { method: 'POST', body: JSON.stringify({ name, role }) });
+        ? await apiFetch(`/api/users/${editingUserToken}`, { method: 'PUT', body })
+        : await apiFetch('/api/users', { method: 'POST', body });
       const data = await res.json();
       if (data.success) {
         const wasNew = !editingUserToken;
