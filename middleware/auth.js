@@ -1,14 +1,42 @@
 const fs = require('fs');
 const path = require('path');
 
-const USERS_PATH = path.join(__dirname, '../data/users.json');
+// Two-tier split, added 2026-09-08 after an outage where the single
+// users.json got gitignored (matching the other runtime-written data
+// files), a deploy wiped it, and NOTHING could authenticate afterward —
+// not even to fix it, since this server's interactive SSH/SFTP users have
+// no write access to data/ at all (only the deploy process does). Core
+// users (data/users.json) stay git-tracked deliberately, so at least one
+// admin account always survives a from-scratch deploy no matter what;
+// everyone added via 用戶管理 lives in the separate, gitignored
+// data/users-managed.json instead, which CAN wipe/reset across deploys
+// without ever locking every admin out entirely.
+const CORE_USERS_PATH = path.join(__dirname, '../data/users.json');
+const MANAGED_USERS_PATH = path.join(__dirname, '../data/users-managed.json');
 
-function getUsers() {
+function loadCoreUsers() {
   try {
-    return JSON.parse(fs.readFileSync(USERS_PATH, 'utf8'));
+    return JSON.parse(fs.readFileSync(CORE_USERS_PATH, 'utf8'));
   } catch (e) {
     return { tokens: {} };
   }
+}
+
+function loadManagedUsers() {
+  try {
+    return JSON.parse(fs.readFileSync(MANAGED_USERS_PATH, 'utf8'));
+  } catch (e) {
+    return { tokens: {} };
+  }
+}
+
+// Merged view for auth lookups. Core wins on a token collision — a
+// managed-file entry (which routes/users.js writes to on every add/edit)
+// should never be able to shadow or overwrite a core account.
+function getUsers() {
+  const core = loadCoreUsers();
+  const managed = loadManagedUsers();
+  return { tokens: { ...managed.tokens, ...core.tokens } };
 }
 
 // Validates X-Extension-Secret + X-Token, attaches user to req
@@ -60,4 +88,4 @@ function adminOnly(req, res, next) {
   next();
 }
 
-module.exports = { authMiddleware, seniorOnly, adminOnly, getUsers };
+module.exports = { authMiddleware, seniorOnly, adminOnly, getUsers, loadCoreUsers, loadManagedUsers };

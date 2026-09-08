@@ -1068,16 +1068,20 @@ ${cta2Content || '<p style="color:#888;">內容尚未設定。</p>'}
     tbody.innerHTML = usersCache.map(u => {
       const isSelf = u.token === TOKEN;
       const statusBadge = u.disabled ? '<span class="badge-disabled">已停用</span>' : '<span class="badge-current">使用中</span>';
+      const coreBadge = u.isCore ? ' <span class="badge-current" title="核心管理員帳戶 — 淨係可以透過 GitHub + 部署修改，唔可以喺呢度編輯/停用">核心</span>' : '';
       const toggleLabel = u.disabled ? '啟用' : '停用';
-      const toggleBtn = isSelf
+      // Core accounts are read-only through this API (routes/users.js
+      // rejects writes to them) — no edit/disable actions shown for them,
+      // same idea as hiding 停用 on your own logged-in row.
+      const actions = u.isCore
         ? ''
-        : `<button class="link-btn" onclick="toggleUserDisabled('${u.token}', ${!u.disabled})">${toggleLabel}</button>`;
+        : `<button class="link-btn" onclick="editUser('${u.token}')">編輯</button> ${isSelf ? '' : `<button class="link-btn" onclick="toggleUserDisabled('${u.token}', ${!u.disabled})">${toggleLabel}</button>`}`;
       return `<tr>
         <td>${escapeHtml(u.name)}</td>
         <td><span class="token-cell">${escapeHtml(u.token)} <button class="link-btn" onclick="copyToken('${u.token}')" title="複製 Token">複製</button></span></td>
-        <td>${ROLE_DISPLAY_NAMES[u.role] || escapeHtml(u.role)}</td>
+        <td>${ROLE_DISPLAY_NAMES[u.role] || escapeHtml(u.role)}${coreBadge}</td>
         <td>${statusBadge}</td>
-        <td><button class="link-btn" onclick="editUser('${u.token}')">編輯</button> ${toggleBtn}</td>
+        <td>${actions}</td>
       </tr>`;
     }).join('');
   }

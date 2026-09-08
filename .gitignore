@@ -14,10 +14,7 @@ data/announcement.json
 data/announcement-versions.json
 data/customer-questions.json
 data/templates.json
-# users.json joined this list once routes/users.js started writing to it —
-# it gates login itself, so see the deploy callout in the plan/handover
-# notes before untracking it in production: back up data/users.json via
-# SSH (cp data/users.json data/users.json.bak) BEFORE that specific
-# deploy, since a mid-deploy wipe here can't be self-healed through the
-# API (no valid token would authenticate the fix).
-data/users.json
+# data/users.json (core admin accounts) is deliberately NOT in this list —
+# see the 2026-09-08 outage note in middleware/auth.js for why. Only
+# data/users-managed.json (everyone added via 用戶管理) is gitignored.
+data/users-managed.json
