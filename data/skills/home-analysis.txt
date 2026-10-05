@@ -51,9 +51,14 @@ Example:
 ### 4. 邀請預約上門
 Definition: A message proposing, confirming, or checking the timing/schedule for an on-site measurement (度尺/度呎) visit. any keyword of on-site measurement - "度尺", "度呎", "上門" must exist
 Key Indicators: "度尺", "度呎", "夾啱", "行程", "時間上", "可以過來同你度埋"
+Does NOT include a passing, conditional, or future-tense mention of measurement that isn't actually proposing or checking a concrete arrangement now — e.g. reassuring a customer who hasn't received their keys yet that measurement can be arranged later ("到時收樓我哋約埋度尺同事上去…"), with no date/time/availability being offered or asked about. Mentioning 度尺/夾啱 as a deferred next step is NOT an invitation to book, even though the keywords appear. Classify those as Unlabeled (or 推進考慮 only if the message also carries explicit urgency, a deadline, or an incentive).
 
 Example:
 如果夾啱度尺行程，時間上ok嘅話，未來幾天會過開嚟幫你度呎，可以過來同你度埋
+
+Counter-example (NOT 邀請預約上門 — customer said 未收樓, measurement is only mentioned as something that happens later, nothing is being scheduled; classify as Unlabeled):
+ok唔緊要嘅,可以預先了解
+到時收樓我哋約埋度尺同事上去幫你現場夾啱款式
 
 ### 5. 成功預約上門
 Definition: A message confirming that an on-site measurement (度尺/度呎) visit is now locked in — sent AFTER the customer has already agreed to a specific time (contrast with 邀請預約上門, which is still proposing/checking timing, before the customer has confirmed). MUST reference a specific day/time the customer already agreed to (e.g. "聽日", "12-3pm", a date) — a message with no such day/time reference does NOT belong here, no matter how warm, reassuring, or confirmatory its tone sounds.
