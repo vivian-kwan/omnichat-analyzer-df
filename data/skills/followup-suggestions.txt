@@ -8,15 +8,14 @@ Input: a short summary covering (a) keywords/concerns the customer raised, (b) w
 
 Your tasks:
 1. Your PRIMARY suggestion is driven by the Latest stage — follow exactly the one branch below that matches it:
-   - **邀請報價**（仍在邀請報價階段）→ 檢查客人係見到邊個帖/邊件產品先嚟查詢，等品牌可以針對性咁介紹啱佢嘅產品。
-   - **提供報價**（已經提供咗報價）→ 圍繞客人自己提出過嘅關鍵字/疑慮進一步發展話題，並建議分享相關嘅已裝案例（只寫方向，唔好描述案例嘅內容、效果或數據），加深說服力。
-   - **推進考慮** 或 **邀請預約上門**（推緊客人考慮，或者已經邀請咗上門）→ 檢查客人而家嘅狀況（例如租客/業主身份、幾時入住或裝修進度）同想預約嘅原因，並且結合客人自己嘅關鍵字嚟問。
+   - **邀請報價**（仍在邀請報價階段）→ 檢查客人而家嘅狀況（例如租客/業主身份、幾時入住或裝修進度）。
+   - **提供報價**（已經提供咗報價）或者 **推進考慮** 或 **邀請預約上門**（推緊客人考慮，或者已經邀請咗上門）→ 建議品牌分享相關嘅案例（已裝案例、實際效果，只寫方向，唔好描述案例嘅內容、效果或數據），同埋圍繞客人自己提出過嘅關鍵字/疑慮進一步發展話題，加深說服力。同時，如果未確認客人而家嘅狀況（例如租客/業主身份、幾時入住或裝修進度），應該補問；亦要檢查客人想預約嘅原因，並且結合客人自己嘅關鍵字嚟問。
    - **成功預約上門**（已經確認咗上門時間）→ 跳過，唔使再建議追問——呢個對話而家唔需要新嘅追問動作。
 2. Whichever branch above applies, always tie the suggestion back to a specific keyword/concern the customer themselves raised (from summary part a) wherever one exists — wrap the keyword you're using in `**` (e.g. `**貓跳出街**`) so it stands out. Only fall back to a generic stage-appropriate suggestion if the customer genuinely raised no specific concern.
-3. Unless the Latest stage is 成功預約上門 (skip entirely per rule 1), if the summary indicates a gap was already flagged (e.g. tenant/owner status or move-in timing was never confirmed), also include a point for closing that gap — in addition to the primary branch suggestion, not instead of it.
+3. Unless the Latest stage is 成功預約上門 (skip entirely per rule 1), the customer-status check (租客/業主身份, 入住或裝修進度) comes from summary part (c): if (c) says it was never confirmed, make that check an explicit point; if (c) says it is already known, do NOT ask it again — skip it, or at most build on what is already known.
 4. Unless skipping, if the customer went cold at a specific stage, you may add one re-engagement angle appropriate to that stage as a secondary point after the primary branch suggestion (e.g. an incentive angle if they went cold after pricing, a lower-commitment ask like just confirming the estate name if they went cold very early). For an incentive angle, only say that an incentive angle is worth checking — never invent a specific discount, offer or condition.
 5. Wording rules:
-   - Process questions — 租客/業主, 入住或裝修時間, 決策人, 屋苑名/單位, 想預約嘅原因, 邊個帖/邊件產品先嚟查詢 — may be written as a ready-to-send question, in the form 「確認…；如未有，問：「…」」 so it does not presume the point is missing.
+   - Process questions — 租客/業主, 入住或裝修時間, 決策人, 屋苑名/單位, 想預約嘅原因 — may be written as a ready-to-send question, in the form 「確認…；如未有，問：「…」」 so it does not presume the point is missing.
    - Anything about the product itself — 款式, 物料, 顏色, 尺寸, 功能, 安裝方式, 保養, 工期, 價錢, 優惠 — and any case-sharing suggestion must be written as direction only: what to find out or show, tied to the customer's own keyword. Never write it as a specific question that offers options, and never describe specs, numbers or methods. For example: 「客人對 **窗花** 嘅具體要求」; 「同 **貓跳出街** 相關嘅已裝案例」.
 
 # Output Instructions
