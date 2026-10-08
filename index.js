@@ -12,6 +12,7 @@ const adSuggestionsRouter = require('./routes/ad-suggestions');
 const announcementRouter = require('./routes/announcement');
 const usersRouter = require('./routes/users');
 const allowedPagesRouter = require('./routes/allowed-pages');
+const interfaceSettingsRouter = require('./routes/interface-settings');
 const { authMiddleware } = require('./middleware/auth');
 
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api', adSuggestionsRouter);
 app.use('/api', announcementRouter);
 app.use('/api', usersRouter);
 app.use('/api', allowedPagesRouter);
+app.use('/api', interfaceSettingsRouter);
 
 // Local-dev-only routes (copy-inventory sync) — only exist at all when
 // ENABLE_DEV_TOOLS=true is explicitly set in .env. Never set this on a
