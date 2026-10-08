@@ -305,6 +305,18 @@
       <div class="status" id="annStatus"></div>
     </div>
 
+    <div class="announcement-box" id="pagesBox" style="display:none">
+      <h2>可使用分析功能嘅頁面</h2>
+      <p class="hint">只有喺以下頁面，extension 嘅「分析」同「批量分析」按鈕先會啟用，其他頁面會顯示灰色。每行一個網址，只接受 https://console.omnichat.ai/… 嘅網址；該路徑底下嘅頁面（例如 /inbox/123）都會一併啟用。Rep 重新載入 Omnichat 頁面後生效。</p>
+      <label>允許嘅網址（每行一個）</label>
+      <textarea id="allowedPagesInput" rows="4" style="min-height:90px;" placeholder="https://console.omnichat.ai/conversation&#10;https://console.omnichat.ai/inbox"></textarea>
+      <div class="editor-actions">
+        <button class="link-btn" onclick="resetAllowedPagesDefault()">還原預設</button>
+        <button class="btn-save" onclick="saveAllowedPages()">儲存網址</button>
+      </div>
+      <div class="status" id="pagesStatus"></div>
+    </div>
+
     <div class="sync-box" id="syncBox" style="display:none">
       <h2>從試算表同步文案</h2>
       <p class="hint">讀取 docs/omnichat-copy-inventory.xlsx，並將對應嘅文字/class 改動寫入 content.js 同 skills.html。只限本機 dev server 使用 — 請先預覽。</p>
@@ -446,11 +458,13 @@
       document.getElementById('editorPlaceholder').style.display = 'block';
       document.getElementById('announcementBox').style.display = 'block';
       document.getElementById('adSuggestionsBox').style.display = 'block';
+      document.getElementById('pagesBox').style.display = 'block';
       document.getElementById('syncBox').style.display = 'block';
       document.getElementById('userLabel').textContent = `已連接至 ${BASE_URL}`;
       renderSkills(data.skills);
       restoreTestCreds();
       loadAnnouncementEditor();
+      loadAllowedPages();
       loadAdSuggestions();
 
       // 用戶管理 tab only for admin — mirrors the server-side adminOnly gate
@@ -763,6 +777,56 @@
     // getContent() instead of needing an upload endpoint. See the size
     // warning in saveAnnouncement() for the tradeoff this brings.
   });
+
+  // ---- 可使用分析功能嘅頁面 (routes/allowed-pages.js) ----
+  const DEFAULT_ALLOWED_PAGES = ['https://console.omnichat.ai/conversation', 'https://console.omnichat.ai/inbox'];
+
+  async function loadAllowedPages() {
+    const statusEl = document.getElementById('pagesStatus');
+    try {
+      const res = await apiFetch('/api/allowed-pages');
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('allowedPagesInput').value = data.data.join('\n');
+        statusEl.textContent = '';
+      } else {
+        statusEl.textContent = data.error || '載入失敗。';
+        statusEl.className = 'status err';
+      }
+    } catch (e) {
+      statusEl.textContent = '網絡錯誤。';
+      statusEl.className = 'status err';
+    }
+  }
+
+  function resetAllowedPagesDefault() {
+    document.getElementById('allowedPagesInput').value = DEFAULT_ALLOWED_PAGES.join('\n');
+    document.getElementById('pagesStatus').textContent = '已還原預設網址，請按「儲存網址」先會生效。';
+    document.getElementById('pagesStatus').className = 'status';
+  }
+
+  async function saveAllowedPages() {
+    const statusEl = document.getElementById('pagesStatus');
+    const pages = document.getElementById('allowedPagesInput').value
+      .split('\n').map(l => l.trim()).filter(Boolean);
+    statusEl.textContent = '儲存緊…';
+    statusEl.className = 'status';
+    try {
+      const res = await apiFetch('/api/allowed-pages', { method: 'PUT', body: JSON.stringify({ pages }) });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('allowedPagesInput').value = data.data.join('\n');
+        statusEl.textContent = `✓ 已儲存 ${data.data.length} 個網址。Rep 重新載入 Omnichat 頁面後生效。`;
+        statusEl.className = 'status ok';
+      } else {
+        statusEl.textContent = data.error || '儲存失敗。';
+        statusEl.className = 'status err';
+      }
+    } catch (e) {
+      statusEl.textContent = '網絡錯誤。';
+      statusEl.className = 'status err';
+    }
+  }
 
   async function loadAnnouncementEditor() {
     const res = await apiFetch('/api/announcement');
